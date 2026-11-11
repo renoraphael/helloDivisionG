@@ -1,0 +1,27 @@
+# Local settings and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.mobileprovision
+
+# macOS
+.DS_Store
+
+# Website dependencies and generated output
+node_modules/
+dist/
+build/
+.next/
+coverage/
+*.log
+
+# Xcode user settings and generated output
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.build/
+
+# Local data exports
+private-exports/
