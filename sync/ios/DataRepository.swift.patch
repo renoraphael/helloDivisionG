@@ -1,0 +1,47 @@
+--- a/ios/Hello Division G Beta/DataRepository.swift
++++ b/ios/Hello Division G Beta/DataRepository.swift
+@@ -10,7 +10,7 @@
+     var errorDescription: String? {
+         switch self {
+         case .invalidJSON: "The selected file is not a valid Hello Division G JSON backup."
+-        case .unsupportedVersion(let version): "Database schema version \(version) is unsupported. This app supports version 3."
++        case .unsupportedVersion(let version): "Database schema version \(version) is unsupported. This app supports web versions 3 and 4."
+         case .validation(let messages): messages.joined(separator: "\n")
+         case .storage(let message): "Storage error: \(message)"
+         }
+@@ -38,9 +38,7 @@
+     init() {
+         do {
+             try load()
+-            if !hasImportedData {
+-                try importBundledStarterData()
+-            }
++            // Connected builds never seed from an older bundled snapshot.
+         } catch {
+             lastError = error.localizedDescription
+         }
+@@ -90,7 +88,7 @@
+             ? (nativeRoot["data"] as? [String: Any] ?? [:]) : nativeRoot
+         guard let database = canonical["database"] as? [String: Any] else { throw RepositoryError.invalidJSON }
+         let version = database["schemaVersion"] as? Int ?? 0
+-        guard version == 3 else { throw RepositoryError.unsupportedVersion(version) }
++        guard version == 3 || version == 4 else { throw RepositoryError.unsupportedVersion(version) }
+ 
+         var diagnostics: [String] = []
+         let areas = parseAreas(database["areas"], diagnostics: &diagnostics)
+@@ -134,6 +132,15 @@
+         hasImportedData = true
+         isUsingBundledStarterData = preview.sourceName == "BundledStarterData.json"
+         lastError = nil
++    }
++
++    func preserveBeforeCloudRefresh() throws {
++        guard hasImportedData else { return }
++        let source = try exportNativeBackup()
++        let folder = try applicationSupportURL().appending(path: "CloudRecovery", directoryHint: .isDirectory)
++        try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
++        let target = folder.appending(path: "before-web-sync-\(UUID().uuidString).json")
++        try fileManager.copyItem(at: source, to: target)
+     }
+ 
+     func exportNativeBackup() throws -> URL {
