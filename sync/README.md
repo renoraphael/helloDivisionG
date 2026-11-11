@@ -3,7 +3,7 @@
 ## Status
 The protected sync dataset is initialized from the verified 11 November web backup. The website adapter supports officer login, server-acknowledged saves, revision polling, local unsynced drafts, conflict recovery, and administrator approval/revocation. The phone adapter downloads web data only. It cannot upload a phone snapshot or replace the authoritative dataset.
 
-First administrator activation and a real account sign-in are separate setup steps. End-to-end authenticated browser/phone testing remains pending until the owner completes sign-in. Do not describe this as production-ready.
+First administrator preapproval is enabled and the account email is confirmed. A real account sign-in still needs owner participation. End-to-end authenticated browser/phone testing remains pending until the owner completes sign-in. Do not describe this as production-ready.
 
 ## Private local website
 Run `python3 sync/build_website.py ORIGINAL_V475.html PRIVATE_OUTPUT/index.html`, then serve PRIVATE_OUTPUT locally with `python3 -m http.server 3000 --bind 127.0.0.1 --directory PRIVATE_OUTPUT`. Open `http://localhost:3000/`.
@@ -13,7 +13,7 @@ The builder changes the browser cache names, adds the adapter, and defers storag
 **The supplied HTML contains legacy embedded personal records. The generated file remains a private development copy. Do not upload or publicly host it.** Remove legacy data embedded throughout the app before distribution. This repository stores adapter/schema code only, never the original HTML, backup JSON, or generated private import statements.
 
 ## Officer access
-Create and confirm the app login through the connected website. This is separate from a Supabase dashboard login. A verified account has no data access until its user ID is approved. The first administrator is activated privately; email addresses are not committed. Administrators can use **Officer access** in the sync bar to approve or revoke another confirmed account by email. Approval does not send an invitation. Officers create their own logins first. Existing dashboard preview profiles do not grant access.
+Use **Sign in** for an existing app password, **Forgot password?** to choose/reset a password through a verified email link, **Create account** for a new login, or **Email me a sign-in link** for passwordless web access. Recovery links open a dedicated page to enter and confirm a new password; only the user submits it. The email-link and recovery buttons send email only when clicked by the user. Create and confirm new app logins through the connected website. This is separate from a Supabase dashboard login. A verified account has no data access until its user ID is approved. The first administrator is activated privately; email addresses are not committed. Administrators can use **Officer access** in the sync bar to approve or revoke another confirmed account by email. Approval does not send an invitation. Officers create their own logins first. Existing dashboard preview profiles do not grant access.
 
 Only the publishable client key is in the adapters. Do not substitute a secret or service-role key. Supabase Auth validates sessions; database policies check the current approval registry on every read. The save function and officer management function check current approval server-side. App clients cannot write the approval registry or shared table directly. Revocation blocks future server operations; already downloaded data is still present in local recovery caches.
 
@@ -40,3 +40,5 @@ For a different deployment, parameterize the initial import selection and replac
 - Browser sign-in gate inspected at desktop and 390px mobile width. No startup error was observed.
 - Modified Swift files parsed. The isolated network layer type-checked. Full simulator build was attempted but blocked by this environment's inability to run Xcode macro/plugin and simulator services; verify the full project in Xcode before using it.
 - Real account login, authenticated browser edit/reload, and phone download remain to be tested with the owner.
+
+Authentication request tests passed with mock transport: passwordless email request, recovery request, recovery-link callback, password mismatch rejection, and authenticated PUT password update. These tests send no real email and change no real credentials. Real email-link/reset completion still needs the owner.
