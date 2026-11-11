@@ -13,8 +13,8 @@ The iPhone app loads a bundled BundledStarterData.json and persists a local arch
 
 Neither supplied application has been uploaded to this repository: both contain bundled personal records. Original source files on the Mac are unchanged.
 
-## Proposed service
-Supabase PostgreSQL with Supabase Auth. This is a recommendation, not a provisioned project. The Supabase connection and project still need setup.
+## Database service
+Supabase PostgreSQL project Hello Division G is provisioned in Seoul (ap-northeast-2). Initial private staging is populated; app authentication and synchronization are not connected.
 
 ## Data model and migration approach
 1. Obtain a fresh canonical JSON export from the authoritative website. Preserve a private, dated original and verify counts before any transformation.
@@ -44,8 +44,21 @@ If web and iPhone edits conflict, retain the accepted web value and present the 
 - Remove bundled personal records from distributable website/iPhone source copies, then verify startup with an empty cache and authenticated database loading.
 - Check desktop and mobile web layouts and verify an iPhone build once the database adapters are implemented.
 
-## Next inputs
-Connect Supabase and select/create the project. Export the current web database from the browser where it is used. Supply the initial administrator identity and approved officer identities through the private setup process, not a committed file.
+## Verified staging import — 11 November 2026
+A fresh Full JSON Backup from web IndexedDB was imported into hdg_private.web_imports. The original file text and parsed JSON are both retained. All 35 database fields are separately preserved in hdg_private.import_collections. Staging views expose SQL projections of areas, clubs, memberships, and officer assignments to the database owner without deduplicating or discarding records.
+
+Verified in PostgreSQL:
+- One web backup; all 35 database fields match their source values.
+- 4 areas, 16 clubs, 269 membership records, and 108 officer records.
+- SHA-256 of the stored original file text matches the source file exactly.
+- Anonymous and authenticated app roles have no schema usage or table SELECT rights to private imports.
+- All private staging tables have RLS enabled.
+- The app approval registry is empty and has no client grants or policies.
+
+The supplied data and generated data-bearing import queries are NOT committed to GitHub. database/bootstrap.sql contains only the schema, without member records, credentials, or administrator email addresses. Upload chunks are retained in a private staging table; they have the same denied client access as the import tables.
+
+## Remaining implementation
+Normalize the staged core entities after identity/relationship review; implement tested login and officer approval, server-side revision/conflict handling, and app database adapters. The first administrator identity has been selected privately but no app auth account or approval has been created. Remove bundled personal records from the source copies before uploading either app. Validate desktop/mobile layouts and an iPhone build after adapter changes.
 
 ## Status
-Planning only. No live database, data import, app synchronization, or source sanitization has been completed. No member data is committed in this change.
+Private staging import verified. Neither app is connected to Supabase yet. Web authority is preserved as the migration baseline; automatic web/iPhone conflict resolution is not implemented. Original files on the Mac are unchanged. No member data is committed in this change.
