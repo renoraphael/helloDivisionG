@@ -58,14 +58,14 @@ function showStatus(message,kind='ok'){
  if(kind==='conflict'){el('hdg-conflict').hidden=false;}
  if(kind==='auth'){ready=false;document.body.classList.remove('hdg-authorized');el('hdg-cloud-gate').hidden=false;el('hdg-auth-message').textContent=message;}
 }
-async function request(path,body,authenticated=true,retry=true){
+async function request(path,body,authenticated=true,retry=true,method){
  if(authenticated&&(!session||!session.access_token))throw Object.assign(new Error('Please sign in.'),{status:401});
  if(authenticated&&session.expires_at&&session.expires_at*1000<Date.now()+60000)await refresh();
  const headers={apikey:CONFIG.key,'Content-Type':'application/json'};
  if(authenticated)headers.Authorization='Bearer '+session.access_token;
- const response=await fetch(CONFIG.url+path,{method:body===undefined?'GET':'POST',headers,body:body===undefined?undefined:JSON.stringify(body)});
+ const response=await fetch(CONFIG.url+path,{method:method||(body===undefined?'GET':'POST'),headers,body:body===undefined?undefined:JSON.stringify(body)});
  const result=await response.json().catch(()=>({}));
- if(response.status===401&&authenticated&&retry){await refresh();return request(path,body,true,false);}
+ if(response.status===401&&authenticated&&retry){await refresh();return request(path,body,true,false,method);}
  if(!response.ok)throw Object.assign(new Error(result.msg||result.message||result.error_description||result.error||'Request failed'),{status:response.status,code:result.code});
  return result;
 }
@@ -76,10 +76,12 @@ async function refresh(){
 function mount(){
  if(el('hdg-cloud-gate'))return;
  const gate=document.createElement('section');gate.id='hdg-cloud-gate';
- gate.innerHTML=`<div class="hdg-auth-card"><small>HELLO DIVISION G</small><h1>Officer sign in</h1><p>Your shared Division G database. Access is limited to approved officers.</p><form id="hdg-auth-form"><label>Email<input id="hdg-email" type="email" autocomplete="username" required></label><label>Password<input id="hdg-password" type="password" autocomplete="current-password" required></label><button id="hdg-sign-in" type="submit">Sign in</button><button id="hdg-create" type="button">Create my login</button></form><p id="hdg-auth-message" role="status" aria-live="polite"></p><p class="hdg-small">A dashboard preview profile does not grant database access. Creating a login still requires officer approval.</p></div>`;
+ gate.innerHTML=`<div class="hdg-auth-card"><small>HELLO DIVISION G</small><h1>Sign in</h1><p>Access the shared Division G database with your approved account.</p><form id="hdg-auth-form"><label>Email<input id="hdg-email" type="email" autocomplete="username" required></label><label>Password<input id="hdg-password" type="password" autocomplete="current-password"></label><button id="hdg-sign-in" type="submit">Sign in</button><button id="hdg-forgot" type="button">Forgot password?</button><button id="hdg-create" type="button">Create account</button><hr><p class="hdg-small">Prefer to sign in without a password?</p><button id="hdg-email-link" type="button">Email me a sign-in link</button></form><p id="hdg-auth-message" role="status" aria-live="polite"></p><p class="hdg-small">Only approved Division G officers can access the shared database.</p></div>`;
  document.body.appendChild(gate);
  const bar=document.createElement('aside');bar.id='hdg-cloud-bar';bar.innerHTML=`<span id="hdg-cloud-status" role="status" aria-live="polite">Connecting…</span><button id="hdg-retry">Retry / refresh</button><button id="hdg-signout">Sign out</button><div id="hdg-conflict" hidden><p>A newer web version was saved. Your local edits have been kept.</p><button id="hdg-download-local">Download my local edits</button><button id="hdg-use-shared">Keep edits in recovery and load shared version</button></div>`;document.body.appendChild(bar);
  el('hdg-auth-form').addEventListener('submit',async event=>{event.preventDefault();await login(false);});
+ el('hdg-email-link').onclick=()=>emailSignIn();
+ el('hdg-forgot').onclick=()=>sendPasswordReset();
  el('hdg-create').onclick=()=>login(true);
  el('hdg-retry').onclick=async()=>{await queue.flush();await poll();};
  el('hdg-signout').onclick=async()=>{if(queue.snapshot())await preserveConflict();try{await request('/auth/v1/logout',{});}catch(_){}setSession(null);location.reload();};
@@ -97,10 +99,54 @@ function mount(){
  };
  el('hdg-approve-officer').onclick=()=>manage(true);el('hdg-revoke-officer').onclick=()=>manage(false);
 }
+function redirectUrl(){return location.protocol==='file:'?'http://localhost:3000/':location.origin+location.pathname;}
+async function sendPasswordReset(){
+ const input=el('hdg-email');if(!input.reportValidity())return;
+ const button=el('hdg-forgot');button.disabled=true;
+ el('hdg-auth-message').textContent='Requesting a password setup link…';
+ try{
+  await request('/auth/v1/recover?redirect_to='+encodeURIComponent(redirectUrl()),{email:input.value.trim()},false);
+  el('hdg-auth-message').textContent='If this email has an account, a password setup link is on its way. Open the latest email on this Mac to choose your password.';
+ }catch(error){el('hdg-auth-message').textContent=error.message;}
+ finally{button.disabled=false;}
+}
+function showPasswordRecovery(){
+ ready=false;
+ sessionStorage.setItem('hdg.cloud.recovery.v1','true');
+ const title=el('hdg-cloud-gate').querySelector('h1');title.textContent='Choose your password';
+ const form=document.createElement('form');form.id='hdg-auth-form';
+ form.innerHTML='<label>New password<input id="hdg-new-password" type="password" autocomplete="new-password" minlength="12" required></label><label>Confirm new password<input id="hdg-confirm-password" type="password" autocomplete="new-password" minlength="12" required></label><button id="hdg-save-password" type="submit">Save password and sign in</button>';
+ el('hdg-auth-form').replaceWith(form);
+ el('hdg-auth-message').textContent='Choose a password with at least 12 characters. Only you enter and submit it.';
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();if(!form.reportValidity())return;
+  const first=el('hdg-new-password'),second=el('hdg-confirm-password');
+  if(first.value!==second.value){el('hdg-auth-message').textContent='The passwords do not match.';return;}
+  const button=el('hdg-save-password');button.disabled=true;
+  try{
+   session.user=await request('/auth/v1/user',{password:first.value},true,true,'PUT');
+   first.value='';second.value='';setSession(session);sessionStorage.removeItem('hdg.cloud.recovery.v1');
+   el('hdg-auth-message').textContent='Password saved. Opening your database…';await connect();
+  }catch(error){el('hdg-auth-message').textContent=error.message;}
+  finally{button.disabled=false;}
+ });
+}
+async function emailSignIn(){
+ const input=el('hdg-email');if(!input.reportValidity())return;
+ const button=el('hdg-email-link');button.disabled=true;
+ el('hdg-auth-message').textContent='Sending your sign-in link…';
+ try{
+  const redirect=redirectUrl();
+  await request('/auth/v1/otp?redirect_to='+encodeURIComponent(redirect),{email:input.value.trim(),create_user:false},false);
+  el('hdg-auth-message').textContent='Sign-in link sent. Open the latest email on this Mac. It will return you to this website.';
+ }catch(error){el('hdg-auth-message').textContent=error.message;}
+ finally{button.disabled=false;}
+}
 async function login(create){
  const form=el('hdg-auth-form');if(!form.reportValidity())return;
  ready=false;
  const email=el('hdg-email').value.trim(),password=el('hdg-password').value;
+ if(!password){el('hdg-auth-message').textContent='Enter your app password, or use Email me a sign-in link instead.';return;}
  if(create&&password.length<12){el('hdg-auth-message').textContent='For a new login, choose a password with at least 12 characters. For an existing login, use Sign in with its current password.';return;}
  el('hdg-auth-message').textContent=create?'Creating your login…':'Signing in…';
  el('hdg-sign-in').disabled=el('hdg-create').disabled=true;
@@ -190,11 +236,12 @@ cloud.boot=async function(){
  try{
   session=JSON.parse(sessionStorage.getItem(sessionKey)||'null');
   const fragment=new URLSearchParams(location.hash.slice(1));
+  if(fragment.has('error_description')){el('hdg-auth-message').textContent=fragment.get('error_description');history.replaceState({},'',location.pathname+location.search);}
   if(fragment.has('access_token')){
    setSession({access_token:fragment.get('access_token'),refresh_token:fragment.get('refresh_token'),expires_in:Number(fragment.get('expires_in'))||3600});
    history.replaceState({},'',location.pathname+location.search);
   }
-  if(session){if(!session.user){session.user=await request('/auth/v1/user');setSession(session);}await connect();}
+  if(session){if(!session.user){session.user=await request('/auth/v1/user');setSession(session);}if(fragment.get('type')==='recovery'||sessionStorage.getItem('hdg.cloud.recovery.v1'))showPasswordRecovery();else await connect();}
  }
  catch(error){el('hdg-auth-message').textContent=error.message;}
  setInterval(async()=>{await queue.flush();await poll();},30000);
