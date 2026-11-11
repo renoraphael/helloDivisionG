@@ -14,7 +14,7 @@ The iPhone app loads a bundled BundledStarterData.json and persists a local arch
 Neither supplied application has been uploaded to this repository: both contain bundled personal records. Original source files on the Mac are unchanged.
 
 ## Database service
-Supabase PostgreSQL project Hello Division G is provisioned in Seoul (ap-northeast-2). Initial private staging is populated; app authentication and synchronization are not connected.
+Supabase PostgreSQL project Hello Division G is provisioned in Seoul (ap-northeast-2). Private staging and a protected shared sync dataset are populated. Server APIs and local app adapters are implemented; administrator activation and a real account round-trip test remain pending.
 
 ## Data model and migration approach
 1. Obtain a fresh canonical JSON export from the authoritative website. Preserve a private, dated original and verify counts before any transformation.
@@ -57,8 +57,15 @@ Verified in PostgreSQL:
 
 The supplied data and generated data-bearing import queries are NOT committed to GitHub. database/bootstrap.sql contains only the schema, without member records, credentials, or administrator email addresses. Upload chunks are retained in a private staging table; they have the same denied client access as the import tables.
 
-## Remaining implementation
-Normalize the staged core entities after identity/relationship review; implement tested login and officer approval, server-side revision/conflict handling, and app database adapters. The first administrator identity has been selected privately but no app auth account or approval has been created. Remove bundled personal records from the source copies before uploading either app. Validate desktop/mobile layouts and an iPhone build after adapter changes.
+## Sync implementation
+See [sync/README.md](../sync/README.md) for setup, security behavior, test results, and current limits.
+
+The server sync dataset is initialized from the verified web backup. The website adapter uses officer login, approved-account reads, atomic revision checks, retry request IDs, private revision history, and local conflict recovery. Administrator-only officer approval/revocation is implemented. The iPhone adapter downloads authoritative web data only and backs up its local working copy before refresh. There is no phone upload path.
+
+Live transaction tests passed for access rules, stale saves, idempotency, revocation, and officer management. Test identities and writes were rolled back. Queue tests passed and the browser login gate was checked at desktop/mobile widths. Swift syntax and isolated network-layer checks passed; a full build was blocked by Xcode macro/plugin and simulator restrictions in the coding environment.
+
+## Remaining work
+Activate the privately selected first administrator after explicit access confirmation. The owner must create/confirm their app login and complete an authenticated browser edit/reload and phone download test. Original app sources still contain legacy personal data and are not committed or ready for public distribution. Private connected copies are delivered locally; originals are unchanged. SQL entity normalization can follow the lossless JSONB sync bridge without discarding source fields.
 
 ## Status
-Private staging import verified. Neither app is connected to Supabase yet. Web authority is preserved as the migration baseline; automatic web/iPhone conflict resolution is not implemented. Original files on the Mac are unchanged. No member data is committed in this change.
+Database APIs and local adapters implemented; first administrator activation and end-to-end account testing pending. Sync code is in this draft pull request. No member data, credentials, or administrator email addresses are committed.
