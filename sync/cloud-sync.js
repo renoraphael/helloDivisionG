@@ -76,7 +76,7 @@ async function refresh(){
 function mount(){
  if(el('hdg-cloud-gate'))return;
  const gate=document.createElement('section');gate.id='hdg-cloud-gate';
- gate.innerHTML=`<div class="hdg-auth-card"><small>HELLO DIVISION G</small><h1>Officer sign in</h1><p>Your shared Division G database. Access is limited to approved officers.</p><form id="hdg-auth-form"><label>Email<input id="hdg-email" type="email" autocomplete="username" required></label><label>Password<input id="hdg-password" type="password" autocomplete="current-password" minlength="12" required></label><button id="hdg-sign-in" type="submit">Sign in</button><button id="hdg-create" type="button">Create my login</button></form><p id="hdg-auth-message" role="status" aria-live="polite"></p><p class="hdg-small">A dashboard preview profile does not grant database access. Creating a login still requires officer approval.</p></div>`;
+ gate.innerHTML=`<div class="hdg-auth-card"><small>HELLO DIVISION G</small><h1>Officer sign in</h1><p>Your shared Division G database. Access is limited to approved officers.</p><form id="hdg-auth-form"><label>Email<input id="hdg-email" type="email" autocomplete="username" required></label><label>Password<input id="hdg-password" type="password" autocomplete="current-password" required></label><button id="hdg-sign-in" type="submit">Sign in</button><button id="hdg-create" type="button">Create my login</button></form><p id="hdg-auth-message" role="status" aria-live="polite"></p><p class="hdg-small">A dashboard preview profile does not grant database access. Creating a login still requires officer approval.</p></div>`;
  document.body.appendChild(gate);
  const bar=document.createElement('aside');bar.id='hdg-cloud-bar';bar.innerHTML=`<span id="hdg-cloud-status" role="status" aria-live="polite">Connecting…</span><button id="hdg-retry">Retry / refresh</button><button id="hdg-signout">Sign out</button><div id="hdg-conflict" hidden><p>A newer web version was saved. Your local edits have been kept.</p><button id="hdg-download-local">Download my local edits</button><button id="hdg-use-shared">Keep edits in recovery and load shared version</button></div>`;document.body.appendChild(bar);
  el('hdg-auth-form').addEventListener('submit',async event=>{event.preventDefault();await login(false);});
@@ -101,12 +101,13 @@ async function login(create){
  const form=el('hdg-auth-form');if(!form.reportValidity())return;
  ready=false;
  const email=el('hdg-email').value.trim(),password=el('hdg-password').value;
+ if(create&&password.length<12){el('hdg-auth-message').textContent='For a new login, choose a password with at least 12 characters. For an existing login, use Sign in with its current password.';return;}
  el('hdg-auth-message').textContent=create?'Creating your login…':'Signing in…';
  el('hdg-sign-in').disabled=el('hdg-create').disabled=true;
  try{
   const result=await request(create?'/auth/v1/signup':'/auth/v1/token?grant_type=password',{email,password},false);
   el('hdg-password').value='';
-  if(create&&!result.access_token){el('hdg-auth-message').textContent='Check your email and confirm your login, then return here to sign in. Officer approval is also required.';return;}
+  if(create&&!result.access_token){el('hdg-auth-message').textContent='Open the confirmation email, then return here, enter your password again, and click Sign in. Do not create another login.';return;}
   setSession(result);await connect();
  }catch(error){el('hdg-auth-message').textContent=error.message;}
  finally{el('hdg-sign-in').disabled=el('hdg-create').disabled=false;}
