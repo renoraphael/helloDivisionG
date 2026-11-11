@@ -19,3 +19,9 @@ Do not commit original member-bearing HTML, database exports, passwords, or secr
 The repository history and new public files were scanned against known member names, IDs, email addresses, and private-key patterns before publication. Storage access tests passed for approved download and denial to anonymous, unapproved, and revoked accounts; fixtures rolled back. The loader passed simulated authorization/download tests. A real officer sign-in and end-to-end sync test still needs the owner.
 
 Read `AGENTS.md` before editing. The larger backend and iPhone setup is available in the existing draft pull request.
+
+## Working with multiple AI tools
+
+Start at [START_HERE.md](START_HERE.md). Every assistant should read [AGENTS.md](AGENTS.md), use a task branch, and update [project/HANDOFF.md](project/HANDOFF.md). Copy [project/AI_START_PROMPT.md](project/AI_START_PROMPT.md) into each tool; connections and chat history are not shared automatically.
+
+The full legacy app is still a private local/Storage asset. Full GitHub-only collaboration on all app code requires the data/source separation described in [project/ARCHITECTURE.md](project/ARCHITECTURE.md).

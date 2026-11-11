@@ -25,3 +25,9 @@ xcuserdata/
 
 # Local data exports
 private-exports/
+
+# Private local working sources and data (never push)
+private-app/*
+!private-app/README.md
+private-ios/
+local-data/
