@@ -14,9 +14,9 @@ Use this project with any coding assistant. GitHub stores tracked code, instruct
 Use project/AI_START_PROMPT.md as the initial message in Claude, Grok, Antigravity, Codex, or another assistant. File autodiscovery differs between tools; explicitly tell each tool to read these files. CLAUDE.md is an additional entry pointer, not a separate set of rules.
 
 ## Working locally
-The owner has a separate shared checkout with private-app/v487.html supplied locally and excluded from Git. Local coding tools can use that same folder sequentially. Simultaneous work needs separate working copies and task branches. Do not assume browser-only assistants can edit local files or push commits: connect their own GitHub access or have them return a patch.
+The owner has a separate shared checkout with private-app/v514.html supplied locally and excluded from Git. Local coding tools can use that same folder sequentially. Simultaneous work needs separate working copies and task branches. Do not assume browser-only assistants can edit local files or push commits: connect their own GitHub access or have them return a patch.
 
 ## Important current gap
-A public clone contains the launcher and access/sync code, but not the complete legacy v487 app source. Its member-bearing HTML is protected in Supabase. Full GitHub-only collaboration on the entire app requires separating legacy embedded data from executable source. Do not "solve" this by publishing the private HTML.
+A public clone contains the launcher and access/sync code, but not the complete legacy v514 app source. Its member-bearing HTML is protected in Supabase. Full GitHub-only collaboration on the entire app requires separating legacy embedded data from executable source. Do not "solve" this by publishing the private HTML.
 
 An existing draft PR contains the database and iPhone setup on setup/central-database-plan. Check its status before duplicating work. Main is the live launcher branch. Do not assume a draft branch has been merged or deployed.
