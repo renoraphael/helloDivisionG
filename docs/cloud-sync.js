@@ -48,6 +48,8 @@ let session=null,refreshing=null,ready=false,applying=false,localReady=false,pol
 const pendingId='cloud-pending-'+crypto.randomUUID();
 let recoveredDrafts=[];
 const sessionKey='hdg.cloud.session.v1';
+// The legacy agenda otherwise creates this implicit global only after an edit.
+if(typeof global.agendaGeneratedRecordId==='undefined')global.agendaGeneratedRecordId='';
 const cloud={SyncQueue,shared,signature};
 global.HDGCloud=cloud;
 function el(id){return document.getElementById(id);}
@@ -198,13 +200,13 @@ async function apply(row){
 async function connect(){
  const row=await readState();
  if(global.HDG_ENTRY_LOADER){
-  el('hdg-auth-message').textContent='Opening v475…';
-  const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v475.html',{
+  el('hdg-auth-message').textContent='Opening v484…';
+  const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v484.html',{
    headers:{apikey:CONFIG.key,Authorization:'Bearer '+session.access_token},cache:'no-store'
   });
-  if(!response.ok)throw new Error('The protected v475 app could not be loaded. Please contact the administrator.');
+  if(!response.ok)throw new Error('The protected v484 app could not be loaded. Please contact the administrator.');
   const html=await response.text();
-  if(!html.includes('hdg-cloud-adapter'))throw new Error('The protected app file is not a connected v475 build.');
+  if(!html.includes('hdg-cloud-adapter'))throw new Error('The protected app file is not a connected v484 build.');
   global.HDG_ENTRY_LOADER=false;
   document.open();document.write(html);document.close();
   return;

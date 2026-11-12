@@ -5,8 +5,8 @@ These project instructions apply to every coding assistant used on this project.
 ## Source and data
 - This repository is public by the owner's explicit choice. Never commit member records, original member-bearing HTML, database exports, credentials, or signing material.
 - docs/ contains the GitHub Pages sign-in launcher, CSS, and sync adapter. Pushing changes there to main publishes them.
-- The full connected v475 app is a protected asset in Supabase bucket hdg-private-app, object v475.html. It is not available from a public clone.
-- On the owner's shared Mac checkout, private-app/v475.html is the private working copy. It is ignored by Git and must stay ignored. Use it for full app edits only when the owner has supplied access.
+- The full connected v484 app is a protected asset in Supabase bucket hdg-private-app, object v484.html. It is not available from a public clone.
+- On the owner's shared Mac checkout, private-app/v484.html is the private working copy. It is ignored by Git and must stay ignored. Use it for full app edits only when the owner has supplied access.
 - Supabase PostgreSQL holds authoritative shared records. iPhone sync is download-only. Never upload phone data over the web baseline.
 - Preview profiles are not account authorization. Preserve server-side approval, RLS, revision checks, retry IDs, and conflict recovery.
 
@@ -21,6 +21,6 @@ These project instructions apply to every coding assistant used on this project.
 ## Verification and deployment
 - Check relevant desktop/mobile browser behavior for website edits. Report whether an iPhone build was actually verified.
 - Use synthetic records for tests. Never put live member data into test fixtures or public logs.
-- A GitHub commit does not update the protected v475 asset. Follow project/DEPLOYMENT.md and keep source and deployed versions identifiable.
+- A GitHub commit does not update the protected v484 asset. Follow project/DEPLOYMENT.md and keep source and deployed versions identifiable.
 - Database changes require an appropriate test and access review. Do not weaken approval policies to make a failing client work.
 - Confirm the public bundle contains no private data before publishing. Never put server/secret keys in client code.

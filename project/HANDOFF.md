@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated: 11 November 2026 (Asia/Makassar).
+Updated: 12 November 2026 (Asia/Makassar).
 
 ## Owner's objective
 Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hello Division G project without losing changes, leaking member data, or relying on one chat's memory.
@@ -8,11 +8,16 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 ## Current state
 - Repository is public by explicit owner approval.
 - GitHub Pages main / docs serves the officer sign-in launcher.
-- The connected full v475 app is private in Supabase Storage; PostgreSQL holds shared web records.
+- The connected full v484 app is private in Supabase Storage; PostgreSQL holds shared web records.
 - The web backup is authoritative. iPhone downloads only.
 - First-administrator preapproval and the owner's confirmed account exist. The owner can use email-link sign-in or password recovery. Never store their email/password in this handoff.
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
-- A local shared project copy includes ignored private-app/v475.html. This file is absent from GitHub by design.
+- A local shared project copy includes ignored private-app/v484.html. This file is absent from GitHub by design.
+
+## v484 update
+The owner supplied an offline Opus-refined v484 HTML and v476–v484 change notes. The private build preserves the source outside the three required connection hooks and injected adapter/styles/version marker. Integration initializes an otherwise implicit agendaGeneratedRecordId before restored meeting selection. All 85 inline scripts parse; 17 synthetic browser checks passed, including all 84 poster layout/palette SVG combinations, roles edits reaching shared saves, meeting extras, slide hiding, active-meeting storage, and the one-time TLI correction without overwriting a later user date.
+
+This release changes app code only. It does not import the offline app's bundled data over the authoritative Supabase snapshot. Browser-only preferences remain local. The offline HTML and generated connected HTML are ignored and never committed. Keep the prior protected v475 object for rollback.
 
 ## Verified
 Pages deployment and live sign-in gate; synthetic database access/revision/retry tests; private bucket and approved/unapproved/anonymous/revoked download rules; simulated authentication and app-loader behavior. No member records were committed.
@@ -20,8 +25,11 @@ Pages deployment and live sign-in gate; synthetic database access/revision/retry
 ## Still open
 1. Owner-assisted real login/password-reset and authenticated browser sync round-trip.
 2. Full iPhone build and download verification in Xcode.
-3. Extract all embedded member data from legacy v475 so the entire application source can be tracked safely and rebuilt from GitHub.
+3. Extract all embedded member data from legacy v484 so the entire application source can be tracked safely and rebuilt from GitHub.
 4. Reconcile the draft backend branch with the deployed launcher before treating any draft source as production.
+
+## Additional verification limits for v484
+The provided author's notes report more extensive standalone desktop checks. Our independent checks use mocked Supabase transport and synthetic records. Real account end-to-end testing, actual PowerPoint file opening, dictionary lookup, phone voting, photo-based posters, and a full iPhone build remain unverified. The app remains desktop-only as supplied.
 
 ## Next assistant entry
 Read START_HERE.md and AGENTS.md. Inspect git status and the current commit. Ask for the owner's specific next task if none is provided. Use a task branch. Do not overwrite the protected app or database as an incidental part of a small UI change.
