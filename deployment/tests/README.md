@@ -7,3 +7,7 @@ The generated QA HTML contains the legacy private app and is deliberately not co
 ## v487
 
 The v487 suite adds poster control, title/subtitle, address, optional registration, fee and featured-person checks. 26/28 pass on the supplied source: the two failures document existing fee omissions in four layouts and long-contact truncation in Split editorial. All 17 cloud integration regressions pass. The app source was preserved rather than silently redesigned.
+
+## v514
+
+26/26 local browser checks passed with mocked Supabase transport, including 84 poster SVG combinations, shared saves, education/date parsing, meeting-order memory, and PNG alpha/JPEG import. Built-in app history migration remains in the private source. No production data was edited by tests.
