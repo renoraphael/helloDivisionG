@@ -1,4 +1,4 @@
-# Hello Division G — v484
+# Hello Division G — v487
 
 Officer dashboard and meeting tools.
 
@@ -6,7 +6,7 @@ Officer dashboard and meeting tools.
 
 The GitHub Pages entry point is https://renoraphael.github.io/helloDivisionG/ once Pages finishes deploying. It is published from `main` / `docs`.
 
-The public files contain only the sign-in launcher and sync adapter. After officer sign-in, the launcher downloads the connected v484 app from the private `hdg-private-app` Supabase bucket. The original HTML embeds member records and is intentionally absent from this public repository.
+The public files contain only the sign-in launcher and sync adapter. After officer sign-in, the launcher downloads the connected v487 app from the private `hdg-private-app` Supabase bucket. The original HTML embeds member records and is intentionally absent from this public repository.
 
 Use **Sign in**, **Create account**, **Forgot password?**, or **Email me a sign-in link**. A confirmed login also needs explicit Division G officer approval. The first administrator has been preapproved privately.
 
@@ -26,6 +26,6 @@ Start at [START_HERE.md](START_HERE.md). Every assistant should read [AGENTS.md]
 
 The full legacy app is still a private local/Storage asset. Full GitHub-only collaboration on all app code requires the data/source separation described in [project/ARCHITECTURE.md](project/ARCHITECTURE.md).
 
-## v484 release
+## v487 release
 
-The hosted app follows the supplied Opus v476–v484 refinements. See [the change notes](project/V476-V484_CHANGES.md) and [release manifest](project/V484_RELEASE.json). The full member-bearing HTML stays in private storage as `v484.html`; the previous `v475.html` is retained for rollback. No database backup was imported as part of this code update.
+The hosted app follows the supplied Opus v476–v487 refinements. See [the change notes](project/V476-V487_CHANGES.md) and [release manifest](project/V487_RELEASE.json). The full member-bearing HTML stays in private storage as `v487.html`; the previous `v484.html` and `v475.html` is retained for rollback. No database backup was imported as part of this code update.

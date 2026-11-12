@@ -1,9 +1,9 @@
 {
-  "version": "v484",
-  "privateAppSha256": "e35f8b43bd8239c34aea6ec052f8d496b767ec8a52ed8610eb54a3da66d28404",
-  "offlineSourceSha256": "91b1ddadf4632923930034eb8b2d786b029570aae07ac4a1620e9229e8928b95",
-  "source": "protected connected v484",
+  "version": "v487",
+  "privateAppSha256": "3da4ee3404395a92c1da048eeaf2a122ba5191dfd3f34755f03fb1a40951f434",
+  "offlineSourceSha256": "b001b9ce404826a56103a1c65875c892033fa5ef1eb8f763419d226235985f28",
+  "source": "protected connected v487",
   "containsPrivateRecords": true,
   "trackedInGit": false,
-  "rollbackObject": "hdg-private-app/v475.html"
+  "rollbackObject": "hdg-private-app/v484.html"
 }
