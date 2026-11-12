@@ -1,0 +1,19 @@
+{
+  "version": "v487",
+  "sourceSha256": "b001b9ce404826a56103a1c65875c892033fa5ef1eb8f763419d226235985f28",
+  "privateBuildSha256": "3da4ee3404395a92c1da048eeaf2a122ba5191dfd3f34755f03fb1a40951f434",
+  "privateObject": "hdg-private-app/v487.html",
+  "priorPrivateObject": "hdg-private-app/v484.html",
+  "databaseImportPerformed": false,
+  "sourcePreservationCheck": "Exact source preserved outside the three storage/boot hooks and injected adapter/styles/version marker.",
+  "validation": {
+    "scriptSyntax": "All 86 inline scripts parse successfully.",
+    "syntheticBrowserChecks": "26/28 passed; all 17 existing integration checks pass, plus new poster controls, all 84 SVG combinations, explicit titles/subtitles and cleaned addresses in all 12 layouts.",
+    "knownSourceIssues": [
+      "Full-bleed photo, Big typography, Pill title, and Half & half omit fee text.",
+      "Split editorial truncates a long WhatsApp contact number beside a registration QR."
+    ],
+    "realOfficerLogin": "Owner-assisted check still pending.",
+    "storageAccess": "PASS: bucket private; v487 present; approved download allowed; unapproved, anonymous and revoked denied; synthetic users rolled back."
+  }
+}
