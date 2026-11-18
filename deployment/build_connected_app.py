@@ -21,6 +21,19 @@ changes={
 for old,new in changes.items():
  if source.count(old)!=1:parser.error('Missing or ambiguous integration point: '+old)
  source=source.replace(old,new,1)
+# Hosted clients load the shared database. Do not silently replay offline roster,
+# nickname, or attendance seeds against an approved officer's shared records.
+if args.version == 'v632':
+ for migration in ('migrateNov09OfficialRosterV445','migrateNov16OfficialRosterV603'):
+  line=f'  candidate={migration}(candidate);\n'
+  if source.count(line)!=1:parser.error('Missing or ambiguous embedded roster migration: '+migration)
+  source=source.replace(line,'',1)
+ for seed in ('v526-nickname-seed','v527-nickname-update','v615-tli2-surabaya','v617-past-exco'):
+  tag=f'<script id="{seed}">'
+  if source.count(tag)!=1:parser.error('Missing or ambiguous startup seed: '+seed)
+  start=source.index(tag)
+  end=source.index('</script>',start)+len('</script>')
+  source=source[:start]+source[end:]
 js=(root/'docs/cloud-sync.js').read_text();css=(root/'docs/cloud-sync.css').read_text()
 if '</script' in js.lower():parser.error('Adapter contains an unsafe closing script delimiter.')
 if '<head>' not in source[:1000]:parser.error('Expected a document head near the start of the HTML.')

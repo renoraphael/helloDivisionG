@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated: 12 November 2026 (Asia/Makassar).
+Updated 18 November 2026 (Asia/Makassar).
 
 ## Owner's objective
 Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hello Division G project without losing changes, leaking member data, or relying on one chat's memory.
@@ -8,11 +8,15 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 ## Current state
 - Repository is public by explicit owner approval.
 - GitHub Pages main / docs serves the officer sign-in launcher.
-- The connected full v514 app is private in Supabase Storage; PostgreSQL holds shared web records.
+- The active launcher and protected release must be verified together during rollout. PostgreSQL holds shared web records.
 - The web backup is authoritative. iPhone downloads only.
 - First-administrator preapproval and the owner's confirmed account exist. The owner can use email-link sign-in or password recovery. Never store their email/password in this handoff.
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
-- A local shared project copy includes ignored private-app/v514.html. This file is absent from GitHub by design.
+- The generated private-app/v632.html is ignored by Git.
+
+## v632 update
+
+See [V632_RELEASE.md](V632_RELEASE.md) for source hashes, rollout order, and the mobile integration path. The connected build omits offline roster, nickname, and historical attendance backfills so those updates can be reviewed independently against the shared database. Keep v514 available for rollback.
 
 ## v514 update
 Owner supplied v514 and v487–v514 change notes; the interrupted v491 release was superseded. The connected build preserves all offline source except the three established connection hooks and injected adapter/styles/release marker. v514 adds agenda format/education parsing, meeting-order memory, poster branding/series/layout refinements, and transparent picture import. No manual offline database import is performed. The supplied app includes automatic v504 history additions and a conditional v509 address correction; these remain active. Protected v487 is retained for rollback. All 104 inline scripts parse and 26/26 synthetic browser checks pass, including shared saves, education/date parsing, remembered meeting order and transparent PNG/opaque JPEG imports. Protected v514 upload completed; storage access tests pass for approved, anonymous, unapproved and revoked roles, with test identities rolled back. Branch update/v514 switches the launcher; verify Pages after merge. Existing local deletions of the v484/v487 public alias files predated this task and are left unstaged.
