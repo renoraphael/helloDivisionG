@@ -32,13 +32,6 @@ function fixture(mode, path = '') {
   };
   const context = {
     HDG_ENTRY_LOADER: true, URLSearchParams, Date, structuredClone,
-    HDGMemberCommunity: { mount(data, { accountId }) {
-      assert.equal(accountId, 'fixture');
-      assert.equal(data.clubs[0].name, 'Fixture Club');
-      const panel = new Element();
-      panel.className = 'member-shell';
-      return panel;
-    }},
     crypto: { randomUUID: () => 'fixture-request-id' },
     location: { search: path, hash: '', protocol: 'https:' },
     sessionStorage: { getItem: key => mode && key==='hdg.cloud.session.v1' ? JSON.stringify(confirmed) : null },
@@ -59,7 +52,9 @@ function fixture(mode, path = '') {
           if (route.endsWith('hdg_open_ballot')) return { title: 'Fixture ballot', choices: {} };
           throw new Error('Unexpected request ' + route);
         },
-        text: async () => '<html>hdg-cloud-adapter window.__HDG_APP_RELEASE__="v632-community";</html>'
+        text: async () => route.endsWith('/v632-member.html')
+          ? '<script id="hdg-member-context">/* HDG_MEMBER_V632_CONTEXT */</script>'
+          : '<html>hdg-cloud-adapter window.__HDG_APP_RELEASE__="v632-community";</html>'
       };
     }
   };
@@ -106,10 +101,11 @@ async function main() {
 
   app = fixture('member');
   await app.cloud.boot();
-  assert.equal(app.requests.length, 2);
+  assert.equal(app.requests.length, 3);
   assert.match(app.requests[1].url, /hdg_member_community$/);
-  assert.equal(app.writes.length, 0);
-  assert.equal(app.body.children.at(-1).className, 'member-shell');
+  assert.match(app.requests[2].url, /v632-member\.html$/);
+  assert.equal(app.writes.length, 1);
+  assert.match(app.writes[0], /HDG_MEMBER_V632_CONTEXT=.*Fixture Club/);
 
   app = fixture('leader');
   await app.cloud.boot();

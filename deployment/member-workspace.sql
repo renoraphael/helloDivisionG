@@ -43,15 +43,15 @@ begin
    ), '[]'::jsonb),
    'events', coalesce((
      select jsonb_agg(jsonb_build_object('kind', kind, 'title', title, 'date', day,
-       'time', start_time, 'timezone', timezone) order by day, title)
+       'time', start_time, 'timezone', timezone, 'clubNumber', club_number) order by day, title)
      from (
-       select 'TLI' as kind, x->>'name' as title, x->>'date' as day, x->>'start' as start_time, x->>'timezone' as timezone
+       select 'TLI' as kind, x->>'name' as title, x->>'date' as day, x->>'start' as start_time, x->>'timezone' as timezone, null::text as club_number
        from jsonb_array_elements(snapshot->'tlis') x
        union all
-       select 'Contest', x->>'title', x->>'date', x->>'start', x->>'timezone'
+       select 'Contest', x->>'title', x->>'date', x->>'start', x->>'timezone', null::text
        from jsonb_array_elements(snapshot->'contests') x
        union all
-       select 'Club meeting', x->>'title', x->>'date', x->>'start', x->>'timezone'
+       select 'Club meeting', x->>'title', x->>'date', coalesce(x->>'start',x->>'startTime'), x->>'timezone', x->>'clubNumber'
        from jsonb_array_elements(snapshot->'specialMeetings') x
      ) schedule
      where day ~ '^\d{4}-\d{2}-\d{2}$' and nullif(title,'') is not null

@@ -32,13 +32,16 @@ begin
    or (c - array['clubs','meetings','events','leaders','updated']) <> '{}'::jsonb
    or exists (select 1 from jsonb_array_elements(c->'clubs') x where (x - array['name','city','area','mode','number','schedule','timezone','inactive','award','island','shortName','fill','text','accent']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'meetings') x where (x - array['club','date','time','timezone']) <> '{}'::jsonb)
-   or exists (select 1 from jsonb_array_elements(c->'events') x where (x - array['kind','title','date','time','timezone']) <> '{}'::jsonb)
+   or exists (select 1 from jsonb_array_elements(c->'events') x where (x - array['kind','title','date','time','timezone','clubNumber']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'leaders') x where (x - array['name','role','scope']) <> '{}'::jsonb) then
    raise exception 'Community projection includes unexpected fields';
  end if;
  if exists(select 1 from public.hdg_sync_state) then raise exception 'Member could read leadership data'; end if;
- if exists(select 1 from storage.objects where bucket_id='hdg-private-app') then
+ if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name <> 'v632-member.html') then
    raise exception 'Member could read the leadership application';
+ end if;
+ if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member.html') then
+   raise exception 'Member could not read the original workspace build';
  end if;
  begin
    perform public.hdg_manage_ballot('test-meeting','status');
