@@ -44,8 +44,16 @@ class SyncQueue {
  }
  snapshot(){return this.pending||this.inflight?.payload||null;}
 }
+function serializeCacheWrites(write,withLock=job=>job()){
+ let previous=Promise.resolve();
+ return (...args)=>{
+  const next=previous.then(()=>withLock(()=>write(...args)));
+  previous=next.catch(()=>{});
+  return next;
+ };
+}
 // Node tests use the same queue without a browser or real member records.
-if(typeof module!=='undefined'&&module.exports){module.exports={SyncQueue,shared,signature};return;}
+if(typeof module!=='undefined'&&module.exports){module.exports={SyncQueue,shared,signature,serializeCacheWrites};return;}
 let session=null,refreshing=null,ready=false,applying=false,localReady=false,polling=false,baseSave;
 const pendingId='cloud-pending-'+crypto.randomUUID();
 let recoveredDrafts=[], creatingAccount=false;
@@ -282,7 +290,11 @@ async function connect(){
  const access=await request('/rest/v1/hdg_officer_access?division_code=eq.G&select=app_role');
  el('hdg-admin').hidden=!access.some(a=>a.app_role==='administrator');
  // Only initialize the new, separate cloud cache after approval is verified.
- if(!localReady){await initializeDurableStorage();localReady=true;}
+ if(!localReady){
+  await initializeDurableStorage();
+  await waitForDurableSave();
+  localReady=true;
+ }
  const idb=await durableOpenDb();
  const records=await new Promise((resolve,reject)=>{const req=idb.transaction(DURABLE_STORE,'readonly').objectStore(DURABLE_STORE).getAll();req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
  recoveredDrafts=records.filter(record=>record.id.startsWith('cloud-pending')&&record.id!==pendingId&&record.owner===session.user.id&&!record.recovered&&(record.payload||record.request));
@@ -311,11 +323,13 @@ async function poll(){
 cloud.boot=async function(){
  mount();
  if(!global.HDG_ENTRY_LOADER){
-  baseSave=durableCommitRaw;
+  const locks=global.navigator?.locks;
+  baseSave=serializeCacheWrites(durableCommitRaw,locks?job=>locks.request('hdg-shared-cache',job):undefined);
   durableCommitRaw=async function(raw,payload,options){
-  const result=await baseSave(raw,payload,options);
-  if(ready&&!applying){await queue.enqueue(payload);clearTimeout(cloud.saveTimer);cloud.saveTimer=setTimeout(()=>queue.flush(),700);}
-  return result;
+   const shouldSync=ready&&!applying;
+   const result=await baseSave(raw,payload,options);
+   if(shouldSync&&ready&&!applying){await queue.enqueue(payload);clearTimeout(cloud.saveTimer);cloud.saveTimer=setTimeout(()=>queue.flush(),700);}
+   return result;
   };
  }
  try{
