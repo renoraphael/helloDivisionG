@@ -4,18 +4,24 @@ create or replace function public.hdg_member_community()
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare snapshot jsonb;
 declare division_director text;
+declare synced_at timestamptz;
 begin
  if public.hdg_access_mode() not in ('member', 'leader') then
    raise exception 'Verified Toastmasters membership required' using errcode = '42501';
  end if;
- select payload->'database', payload #>> '{settings,divisionDirector}'
- into snapshot, division_director from public.hdg_sync_state where division_code = 'G';
+ select payload->'database', payload #>> '{settings,divisionDirector}', updated_at
+ into snapshot, division_director, synced_at from public.hdg_sync_state where division_code = 'G';
 
  return jsonb_build_object(
+   'updated', synced_at,
    'clubs', coalesce((
      select jsonb_agg(jsonb_build_object(
        'name', c->>'name', 'area', c->>'area', 'city', c->>'city', 'mode', c->>'mode',
        'number', c->>'number', 'schedule', c #>> '{publicProfile,meetingSchedule}',
+       'island', c->>'island',
+       'shortName', coalesce(c #>> '{publicProfile,calendarBrand,shortName}', c #>> '{publicProfile,calendarShortName}'),
+       'fill', c #>> '{publicProfile,calendarBrand,fill}', 'text', c #>> '{publicProfile,calendarBrand,text}',
+       'accent', c #>> '{publicProfile,calendarBrand,accent}',
        'timezone', c #>> '{publicProfile,timezone}', 'inactive', c #>> '{publicProfile,inactive}',
        'award', case when award in ('Distinguished', 'Select Distinguished', 'President''s Distinguished', 'Smedley Distinguished') then award end
      ) order by c->>'name')
