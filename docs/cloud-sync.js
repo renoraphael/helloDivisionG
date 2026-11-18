@@ -4,6 +4,8 @@
 const CONFIG={url:'https://bhbgusdxqbjwsdlzhurb.supabase.co',key:'sb_publishable_73Y-5z5ao1d97jUibxC97g_AMmmaiXh'};
 function shared(payload){
  const out=JSON.parse(JSON.stringify({updated:payload.updated,settings:payload.settings||{},database:payload.database}));
+ // Director workspace records belong outside the officer-readable shared snapshot.
+ if(out.database)delete out.database.workspaceV614;
  if(out.database?.meta)for(const key of ['revision','lastSavedAt','storageModel'])delete out.database.meta[key];
  return out;
 }
@@ -200,13 +202,13 @@ async function apply(row){
 async function connect(){
  const row=await readState();
  if(global.HDG_ENTRY_LOADER){
-  el('hdg-auth-message').textContent='Opening v514…';
-  const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v514.html',{
+  el('hdg-auth-message').textContent='Opening v632…';
+  const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v632.html',{
    headers:{apikey:CONFIG.key,Authorization:'Bearer '+session.access_token},cache:'no-store'
   });
-  if(!response.ok)throw new Error('The protected v514 app could not be loaded. Please contact the administrator.');
+  if(!response.ok)throw new Error('The protected v632 app could not be loaded. Please contact the administrator.');
   const html=await response.text();
-  if(!html.includes('hdg-cloud-adapter'))throw new Error('The protected app file is not a connected v514 build.');
+  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v632";'))throw new Error('The protected app file is not a connected v632 build.');
   global.HDG_ENTRY_LOADER=false;
   document.open();document.write(html);document.close();
   return;

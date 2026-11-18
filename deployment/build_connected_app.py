@@ -21,6 +21,28 @@ changes={
 for old,new in changes.items():
  if source.count(old)!=1:parser.error('Missing or ambiguous integration point: '+old)
  source=source.replace(old,new,1)
+# Hosted clients load the shared database. Do not silently replay offline roster,
+# nickname, or attendance seeds against an approved officer's shared records.
+if args.version == 'v632':
+ for migration in ('migrateNov09OfficialRosterV445','migrateNov16OfficialRosterV603'):
+  line=f'  candidate={migration}(candidate);\n'
+  if source.count(line)!=1:parser.error('Missing or ambiguous embedded roster migration: '+migration)
+  source=source.replace(line,'',1)
+ # Projects & Meetings contains director-only notes. Hosted authorization
+ # currently operates on an officer-readable snapshot, not individual fields.
+ hosted_route="    if(id==='projects' && u.role!=='division-director') return false; /* v614: private to the Division Director */"
+ if source.count(hosted_route)!=1:parser.error('Missing or ambiguous director workspace route.')
+ source=source.replace(hosted_route,"    if(id==='projects') return false; /* Hosted workspace requires server-side authorization. */",1)
+ workspace_link=next((line for line in source.splitlines(keepends=True) if 'href="#projects" data-tab="projects"' in line),None)
+ if not workspace_link or source.count(workspace_link)!=1:parser.error('Missing or ambiguous director workspace navigation.')
+ source=source.replace(workspace_link,'',1)
+ blocks=('v526-nickname-seed','v527-nickname-update','v614-projects-workspace','v615-tli2-surabaya','v617-past-exco')
+ for block in blocks:
+  tag=f'<script id="{block}">'
+  if source.count(tag)!=1:parser.error('Missing or ambiguous hosted exclusion: '+block)
+  start=source.index(tag)
+  end=source.index('</script>',start)+len('</script>')
+  source=source[:start]+source[end:]
 js=(root/'docs/cloud-sync.js').read_text();css=(root/'docs/cloud-sync.css').read_text()
 if '</script' in js.lower():parser.error('Adapter contains an unsafe closing script delimiter.')
 if '<head>' not in source[:1000]:parser.error('Expected a document head near the start of the HTML.')
