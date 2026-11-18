@@ -7,12 +7,18 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 
 ## Current state
 - Repository is public by explicit owner approval.
-- GitHub Pages main / docs serves the officer sign-in launcher.
+- GitHub Pages main / docs serves the sign-in and registration screens and the standalone ballot page.
 - Supabase Storage holds the protected v632 build. PostgreSQL holds shared web records.
 - The web backup is authoritative. iPhone downloads only.
 - First-administrator preapproval and the owner's confirmed account exist. The owner can use email-link sign-in or password recovery. Never store their email/password in this handoff.
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
+
+## Member Community and link ballots
+
+The v632 Community release uses the same Supabase Auth instance. Confirmed active roster emails open the member Community view. The starter view shows upcoming agenda dates and the club directory. Leadership access still requires approval, and leaders retain the existing shared dashboard. Temporary beta access is granted by account ID. The unsigned ballot page receives only the ballot title and candidate choices. The officer who publishes the ballot can refresh the private link tally from Timer & Ballot.
+
+Apply `deployment/community-access.sql`, upload the private `v632-community.html` build, and run `deployment/test-community-access.sql` before enabling the launcher. Keep the original `v632.html` and prior launcher for rollback. Member email registration requires custom SMTP for external delivery. The native iPhone app is outside this release.
 
 ## v632 update
 

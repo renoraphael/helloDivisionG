@@ -21,3 +21,10 @@ The public sign-in page and deployment were verified. Database/queue/storage acc
 Run `python3 deployment/build_connected_app.py /private/path/HelloDivisionG_v632.html private-app/v632.html --version v632` from the checkout. The builder reads the current adapter/styles from `docs`, refuses public output in `docs`, preserves the raw source, and requires the three known storage/boot integration hooks. Before a later version, point the launcher at the intended versioned private object, then rebuild, verify, upload, and deploy together.
 
 Retain `hdg-private-app/v514.html`, `hdg-private-app/v487.html` and `hdg-private-app/v484.html` and `hdg-private-app/v475.html` for the current rollback baseline. Do not overwrite a versioned object as an incidental documentation change.
+
+
+## Member Community and link ballots
+
+Build the connected app with `--version v632-community` and upload it privately as `hdg-private-app/v632-community.html`. Apply `deployment/community-access.sql` once and run `deployment/test-community-access.sql`. The migration adds private ballot and beta-member tables and leaves existing shared data policies in place. Access is enforced by user ID on server-side beta grants, verified roster email for members, and officer approval for leaders.
+
+For regular registration, leave email confirmation enabled and configure custom SMTP. For a no-email beta pilot, create separate preconfirmed accounts from the Auth dashboard. On approval, link those accounts by ID to the private beta member table or the existing Division G officer table as appropriate. Keep credentials out of Git. To retire them, revoke the grants and disable the accounts with Auth administration.
