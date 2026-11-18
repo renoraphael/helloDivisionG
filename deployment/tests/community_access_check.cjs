@@ -61,7 +61,30 @@ function fixture(mode, path = '') {
   return { requests, writes, nodes, body, cloud: context.HDGCloud };
 }
 
+async function verifyCacheOrder() {
+  const { serializeCacheWrites } = require('../../docs/cloud-sync.js');
+  const events = [];
+  let finishFirst;
+  const write = serializeCacheWrites(async value => {
+    events.push('start ' + value);
+    if (value === 'startup') await new Promise(resolve => { finishFirst = resolve; });
+    events.push('finish ' + value);
+    if (value === 'failed') throw Error('fixture write error');
+  });
+  const first = write('startup');
+  const second = write('server');
+  await Promise.resolve();
+  assert.deepEqual(events, ['start startup']);
+  finishFirst();
+  await Promise.all([first, second]);
+  assert.deepEqual(events, ['start startup', 'finish startup', 'start server', 'finish server']);
+  await assert.rejects(write('failed'));
+  await write('next');
+  assert.equal(events.at(-1), 'finish next');
+}
+
 async function main() {
+  await verifyCacheOrder();
   let app = fixture(null, '?view=signup');
   await app.cloud.boot();
   assert.equal(app.nodes.get('hdg-sign-in').textContent, 'Create account');

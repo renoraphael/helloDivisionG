@@ -18,7 +18,7 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 
 The v632 Community release uses the same Supabase Auth instance. Confirmed active roster emails open the member Community view. The starter view shows upcoming agenda dates and the club directory. Leadership access still requires approval, and leaders retain the existing shared dashboard. Temporary beta access is granted by account ID. The unsigned ballot page receives only the ballot title and candidate choices. The officer who publishes the ballot can refresh the private link tally from Timer & Ballot.
 
-Apply `deployment/community-access.sql`, upload the private `v632-community.html` build, and run `deployment/test-community-access.sql` before enabling the launcher. Keep the original `v632.html` and prior launcher for rollback. Member email registration requires custom SMTP for external delivery. The native iPhone app is outside this release.
+Apply `deployment/community-access.sql`, upload the private `v632-community.html` build, and run `deployment/test-community-access.sql` before enabling the launcher. Keep the original `v632.html` and prior launcher for rollback. Member email registration requires custom SMTP for external delivery. The live pilot confirmed the member login. A leadership login smoke test found a local IndexedDB write race between startup activity and the first shared-state load. The adapter serializes writes in a tab and uses a Web Lock across tabs when available. The native iPhone app is outside this release.
 
 ## v632 update
 
