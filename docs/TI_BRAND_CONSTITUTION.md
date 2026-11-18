@@ -44,3 +44,10 @@ Gradients use two stops each. Linear gradients run top to bottom, bottom to top,
 - Toastmasters themes: sidebar uses the Loyal Blue or True Maroon gradient (dark at top, light at bottom), the page background uses the radial gradient, Happy Yellow is the accent, headings, titles, big numbers and small uppercase eyebrow labels use Montserrat (embedded); body text, tables, forms and buttons use Source Sans 3 (embedded; stack Myriad Pro, Source Sans 3, Segoe UI, Arial). The app tags heading-like text automatically.
 - Agendas, posters, slides and print layouts keep their own designs and are not recoloured by the app theme.
 - Status colours (red, green, amber) are kept for meaning and are not part of the brand palette.
+
+## 6. Colour and type hierarchy in the app (owner rules)
+
+- Happy Yellow is only for highlighting (badges, priorities, active or current states, key buttons). It is never used for paragraphs, labels or table heads.
+- Everything else is white or grey on Loyal Blue or True Maroon: headings white, body text Fair Gray `#F5F5F5`, labels and table heads light grey `#D3D9D8`.
+- Body text uses Source Sans 3 (scaled up so it matches Montserrat's letter height); headings, titles, big numbers and eyebrows use Montserrat.
+- Minimum text size is about 12px; keep the order small, normal, heading obvious.
