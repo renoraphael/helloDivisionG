@@ -29,8 +29,8 @@ begin
  if public.hdg_access_mode() <> 'member' then raise exception 'Member was not matched'; end if;
  c := public.hdg_member_community();
  if jsonb_typeof(c->'clubs') <> 'array' or jsonb_typeof(c->'meetings') <> 'array'
-   or (c - array['clubs','meetings','events','leaders']) <> '{}'::jsonb
-   or exists (select 1 from jsonb_array_elements(c->'clubs') x where (x - array['name','city','area','mode','number','schedule','timezone','inactive','award']) <> '{}'::jsonb)
+   or (c - array['clubs','meetings','events','leaders','updated']) <> '{}'::jsonb
+   or exists (select 1 from jsonb_array_elements(c->'clubs') x where (x - array['name','city','area','mode','number','schedule','timezone','inactive','award','island','shortName','fill','text','accent']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'meetings') x where (x - array['club','date','time','timezone']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'events') x where (x - array['kind','title','date','time','timezone']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'leaders') x where (x - array['name','role','scope']) <> '{}'::jsonb) then

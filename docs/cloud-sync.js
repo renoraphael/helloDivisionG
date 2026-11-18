@@ -143,7 +143,7 @@ function loadMemberView(){
    });
   };
   memberViewAssets=Promise.all([
-   load('link','member-community.css'),load('script','member-tools.js'),load('script','member-community.js')
+   load('link','member-community.css?v=v632-2'),load('script','member-tools.js'),load('script','member-community.js?v=v632-2')
   ]).then(()=>global.HDGMemberCommunity);
  }
  return memberViewAssets;
