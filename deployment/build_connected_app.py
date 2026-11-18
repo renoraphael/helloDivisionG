@@ -23,7 +23,7 @@ for old,new in changes.items():
  source=source.replace(old,new,1)
 # Hosted clients load the shared database. Do not silently replay offline roster,
 # nickname, or attendance seeds against an approved officer's shared records.
-if args.version == 'v632':
+if args.version in ('v632', 'v632-community'):
  for migration in ('migrateNov09OfficialRosterV445','migrateNov16OfficialRosterV603'):
   line=f'  candidate={migration}(candidate);\n'
   if source.count(line)!=1:parser.error('Missing or ambiguous embedded roster migration: '+migration)
@@ -49,6 +49,13 @@ if '<head>' not in source[:1000]:parser.error('Expected a document head near the
 import json
 injection='<style id="hdg-cloud-styles">'+css+'</style>\n<script id="hdg-cloud-adapter">'+js+'</script>\n<script id="hdg-release">window.__HDG_APP_RELEASE__='+json.dumps(args.version)+';</script>'
 source=source.replace('<head>','<head>\n'+injection,1)
+if args.version == 'v632-community':
+ ballot=(root/'deployment/hosted-ballot.js').read_text()
+ before, close, after=source.rpartition('</body>')
+ if '</script' in ballot.lower() or not close:
+  parser.error('Could not add the hosted ballot integration.')
+ source=before+'<script id="hdg-hosted-ballot">'+ballot+'</script>\n'+close+after
+
 args.output.parent.mkdir(parents=True,exist_ok=True)
 args.output.write_text(source)
 print('Private connected build created; offline source unchanged. Never commit the generated HTML.')

@@ -10,3 +10,27 @@ body:not(.hdg-authorized)>*:not(#hdg-cloud-gate):not(script):not(style){visibili
 @media(max-width:600px){.hdg-auth-card{padding:22px}#hdg-cloud-bar{left:8px;right:8px;bottom:8px}#hdg-cloud-status{display:block;margin-bottom:8px}}
 
 #hdg-admin{margin-top:8px}#hdg-admin input{padding:6px;color:#fff;background:#182639;border:1px solid #79929c;border-radius:6px}#hdg-admin summary{cursor:pointer}
+
+.hdg-auth-card [hidden]{display:none!important}
+.hdg-auth-card .hdg-main-action{width:100%;margin:12px 0}
+.hdg-auth-card .hdg-auth-switch{border-top:1px solid #36506b;margin-top:18px;padding-top:12px;color:#c7d6e8}
+.hdg-auth-card .hdg-auth-switch button,.hdg-auth-card #hdg-auth-alternatives button{background:transparent;color:#bce9e0;border-color:transparent;text-decoration:underline;padding:5px}
+.hdg-auth-card #hdg-auth-message:empty{display:none}
+.hdg-member-community{max-width:850px;margin:auto;padding:24px;color:#eaf2fa}
+.hdg-member-community header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.hdg-member-community section{background:#17263c;border:1px solid #36506b;border-radius:14px;margin:16px 0;padding:16px}
+.hdg-member-community h1,.hdg-member-community h2{margin:0}
+.hdg-member-community ul{padding:0;list-style:none;margin:12px 0 0}
+.hdg-member-community li{padding:12px 0;border-top:1px solid #36506b}
+.hdg-member-community li span{display:block;color:#c7d6e8;margin-top:3px}
+.hdg-member-community button{border:1px solid #4dbaa6;background:#137e6d;color:white;border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}
+body.hdg-ballot-page{padding:20px;box-sizing:border-box;min-height:100dvh;display:grid;place-content:center}
+.hdg-ballot-card{width:min(100%,420px);margin:auto}
+.hdg-ballot-card fieldset{margin:16px 0;padding:12px;border:1px solid #36506b;border-radius:10px}
+.hdg-ballot-card legend{padding:0 5px;font-weight:700}
+.hdg-ballot-card label{display:flex;gap:9px;align-items:center;margin:8px 0;padding:5px}
+.hdg-ballot-card input[type=radio]{display:inline;width:auto;margin:0;accent-color:#4dbaa6}
+.hdg-ballot-card #ballot-status:empty{display:none}
+body.hdg-community-page,body.hdg-ballot-page{margin:0;background:#101b2b;color:#f5f6fa;font:16px system-ui}
+.hdg-ballot-card{width:100%;max-width:420px}
+body.hdg-ballot-page{grid-template-columns:minmax(0,420px)}

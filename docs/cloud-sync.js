@@ -48,7 +48,7 @@ class SyncQueue {
 if(typeof module!=='undefined'&&module.exports){module.exports={SyncQueue,shared,signature};return;}
 let session=null,refreshing=null,ready=false,applying=false,localReady=false,polling=false,baseSave;
 const pendingId='cloud-pending-'+crypto.randomUUID();
-let recoveredDrafts=[];
+let recoveredDrafts=[], creatingAccount=false;
 const sessionKey='hdg.cloud.session.v1';
 // The legacy agenda otherwise creates this implicit global only after an edit.
 if(typeof global.agendaGeneratedRecordId==='undefined')global.agendaGeneratedRecordId='';
@@ -80,13 +80,14 @@ async function refresh(){
 function mount(){
  if(el('hdg-cloud-gate'))return;
  const gate=document.createElement('section');gate.id='hdg-cloud-gate';
- gate.innerHTML=`<div class="hdg-auth-card"><small>HELLO DIVISION G</small><h1>Sign in</h1><p>Access the shared Division G database with your approved account.</p><form id="hdg-auth-form"><label>Email<input id="hdg-email" type="email" autocomplete="username" required></label><label>Password<input id="hdg-password" type="password" autocomplete="current-password"></label><button id="hdg-sign-in" type="submit">Sign in</button><button id="hdg-forgot" type="button">Forgot password?</button><button id="hdg-create" type="button">Create account</button><hr><p class="hdg-small">Prefer to sign in without a password?</p><button id="hdg-email-link" type="button">Email me a sign-in link</button></form><p id="hdg-auth-message" role="status" aria-live="polite"></p><p class="hdg-small">Only approved Division G officers can access the shared database.</p></div>`;
+ gate.innerHTML=`<div class="hdg-auth-card"><small>HELLO DIVISION G</small><h1>Sign in</h1><p id="hdg-auth-intro"></p><form id="hdg-auth-form"><label>Email<input id="hdg-email" type="email" autocomplete="username" required></label><label>Password<input id="hdg-password" type="password"></label><p id="hdg-password-help" class="hdg-small" hidden>Use at least 12 characters.</p><button id="hdg-sign-in" class="hdg-main-action" type="submit">Sign in</button><div id="hdg-auth-alternatives"><button id="hdg-forgot" type="button">Forgot password?</button><button id="hdg-email-link" type="button">Email me a sign-in link</button></div></form><p id="hdg-auth-message" role="status" aria-live="polite"></p><div class="hdg-auth-switch"><span id="hdg-auth-prompt"></span> <button id="hdg-create" type="button"></button></div></div>`;
  document.body.appendChild(gate);
  const bar=document.createElement('aside');bar.id='hdg-cloud-bar';bar.innerHTML=`<span id="hdg-cloud-status" role="status" aria-live="polite">Connecting…</span><button id="hdg-retry">Retry / refresh</button><button id="hdg-signout">Sign out</button><div id="hdg-conflict" hidden><p>A newer web version was saved. Your local edits have been kept.</p><button id="hdg-download-local">Download my local edits</button><button id="hdg-use-shared">Keep edits in recovery and load shared version</button></div>`;document.body.appendChild(bar);
- el('hdg-auth-form').addEventListener('submit',async event=>{event.preventDefault();await login(false);});
+ el('hdg-auth-form').addEventListener('submit',async event=>{event.preventDefault();await login(creatingAccount);});
  el('hdg-email-link').onclick=()=>emailSignIn();
  el('hdg-forgot').onclick=()=>sendPasswordReset();
- el('hdg-create').onclick=()=>login(true);
+ el('hdg-create').onclick=()=>showAuthMode(!creatingAccount);
+ showAuthMode(global.HDG_ENTRY_LOADER&&new URLSearchParams(location.search).get('view')==='signup');
  el('hdg-retry').onclick=async()=>{await queue.flush();await poll();};
  el('hdg-signout').onclick=async()=>{if(queue.snapshot())await preserveConflict();try{await request('/auth/v1/logout',{});}catch(_){}setSession(null);location.reload();};
  el('hdg-download-local').onclick=()=>downloadPending();
@@ -103,6 +104,63 @@ function mount(){
  };
  el('hdg-approve-officer').onclick=()=>manage(true);el('hdg-revoke-officer').onclick=()=>manage(false);
 }
+function showAuthMode(create){
+ creatingAccount=create;
+ const signIn=el('hdg-sign-in'), password=el('hdg-password'), toggle=el('hdg-create');
+ el('hdg-cloud-gate').querySelector('h1').textContent=create?'Create your account':'Sign in';
+ el('hdg-auth-intro').textContent=create
+  ?'Use the email on your Toastmasters membership record. Verify it to open Community.'
+  :'Sign in to Community or your approved leadership dashboard.';
+ el('hdg-auth-prompt').textContent=create?'Already have an account?':'New to Hello Division G?';
+ signIn.textContent=create?'Create account':'Sign in';
+ toggle.textContent=create?'Sign in instead':'Create an account';
+ password.autocomplete=create?'new-password':'current-password';
+ password.required=create;
+ el('hdg-password-help').hidden=!create;
+ el('hdg-auth-alternatives').hidden=create;
+ el('hdg-auth-message').textContent='';
+}
+function cell(tag,text){
+ const element=document.createElement(tag);
+ element.textContent=text;
+ return element;
+}
+function showMemberCommunity(data){
+ const panel=document.createElement('main');
+ panel.className='hdg-member-community';
+ const header=document.createElement('header');
+ header.append(cell('h1','Community'));
+ const signOut=cell('button','Sign out');
+ signOut.type='button';
+ signOut.onclick=async()=>{try{await request('/auth/v1/logout',{});}catch(_){}setSession(null);location.reload();};
+ header.append(signOut);
+ panel.append(header);
+ for(const [title,items,type,empty] of [
+  ['Upcoming meetings',data.meetings,'meeting','No upcoming meeting agendas are available.'],
+  ['Division G clubs',data.clubs,'club','No clubs are available.']
+ ]){
+  const section=document.createElement('section'),list=document.createElement('ul');
+  section.append(cell('h2',title));
+  for(const item of items||[]){
+   const row=document.createElement('li');
+   row.append(cell('strong',type==='meeting'?item.club||'Club meeting':item.name));
+   const detail=type==='meeting'?[item.date,item.time,item.timezone]:[item.area,item.city,item.mode];
+   row.append(cell('span',detail.filter(Boolean).join(' · ')));
+   list.append(row);
+  }
+  section.append(list.childElementCount?list:cell('p',empty));
+  panel.append(section);
+ }
+ el('hdg-cloud-gate').hidden=true;
+ el('hdg-cloud-bar').remove();
+ document.body.classList.add('hdg-authorized','hdg-community-page');
+ document.body.append(panel);
+}
+cloud.openBallot=token=>request('/rest/v1/rpc/hdg_open_ballot',{p_token:token},false);
+cloud.castBallot=(token,browserId,choices)=>request('/rest/v1/rpc/hdg_cast_ballot',{p_token:token,p_browser_id:browserId,p_choices:choices},false);
+cloud.manageBallot=(meetingId,action,title,choices)=>request('/rest/v1/rpc/hdg_manage_ballot',{
+ p_meeting_id:meetingId,p_action:action,p_title:title??null,p_choices:choices??null
+});
 function redirectUrl(){return location.protocol==='file:'?'http://localhost:3000/':location.origin+location.pathname;}
 async function sendPasswordReset(){
  const input=el('hdg-email');if(!input.reportValidity())return;
@@ -121,7 +179,8 @@ function showPasswordRecovery(){
  const form=document.createElement('form');form.id='hdg-auth-form';
  form.innerHTML='<label>New password<input id="hdg-new-password" type="password" autocomplete="new-password" minlength="12" required></label><label>Confirm new password<input id="hdg-confirm-password" type="password" autocomplete="new-password" minlength="12" required></label><button id="hdg-save-password" type="submit">Save password and sign in</button>';
  el('hdg-auth-form').replaceWith(form);
- el('hdg-auth-message').textContent='Choose a password with at least 12 characters. Only you enter and submit it.';
+ el('hdg-auth-message').textContent='Choose a password with at least 12 characters.';
+ el('hdg-auth-prompt').parentElement.hidden=true;
  form.addEventListener('submit',async event=>{
   event.preventDefault();if(!form.reportValidity())return;
   const first=el('hdg-new-password'),second=el('hdg-confirm-password');
@@ -155,9 +214,9 @@ async function login(create){
  el('hdg-auth-message').textContent=create?'Creating your login…':'Signing in…';
  el('hdg-sign-in').disabled=el('hdg-create').disabled=true;
  try{
-  const result=await request(create?'/auth/v1/signup':'/auth/v1/token?grant_type=password',{email,password},false);
+  const result=await request(create?'/auth/v1/signup?redirect_to='+encodeURIComponent(redirectUrl()):'/auth/v1/token?grant_type=password',{email,password},false);
   el('hdg-password').value='';
-  if(create&&!result.access_token){el('hdg-auth-message').textContent='Open the confirmation email, then return here, enter your password again, and click Sign in. Do not create another login.';return;}
+  if(create&&!result.access_token){el('hdg-auth-message').textContent='Check your email and open the confirmation link to finish setting up your account.';return;}
   setSession(result);await connect();
  }catch(error){el('hdg-auth-message').textContent=error.message;}
  finally{el('hdg-sign-in').disabled=el('hdg-create').disabled=false;}
@@ -200,19 +259,26 @@ async function apply(row){
  }finally{applying=false;}
 }
 async function connect(){
- const row=await readState();
  if(global.HDG_ENTRY_LOADER){
+  const mode=await request('/rest/v1/rpc/hdg_access_mode',{});
+  if(mode==='member'){
+   showMemberCommunity(await request('/rest/v1/rpc/hdg_member_community',{}));
+   return;
+  }
+  if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
+  await readState();
   el('hdg-auth-message').textContent='Opening v632…';
-  const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v632.html',{
+  const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v632-community.html',{
    headers:{apikey:CONFIG.key,Authorization:'Bearer '+session.access_token},cache:'no-store'
   });
   if(!response.ok)throw new Error('The protected v632 app could not be loaded. Please contact the administrator.');
   const html=await response.text();
-  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v632";'))throw new Error('The protected app file is not a connected v632 build.');
+  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v632-community";'))throw new Error('The protected app file is not a connected v632 build.');
   global.HDG_ENTRY_LOADER=false;
   document.open();document.write(html);document.close();
   return;
  }
+ const row=await readState();
  const access=await request('/rest/v1/hdg_officer_access?division_code=eq.G&select=app_role');
  el('hdg-admin').hidden=!access.some(a=>a.app_role==='administrator');
  // Only initialize the new, separate cloud cache after approval is verified.
