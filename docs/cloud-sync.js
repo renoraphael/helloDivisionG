@@ -4,6 +4,8 @@
 const CONFIG={url:'https://bhbgusdxqbjwsdlzhurb.supabase.co',key:'sb_publishable_73Y-5z5ao1d97jUibxC97g_AMmmaiXh'};
 function shared(payload){
  const out=JSON.parse(JSON.stringify({updated:payload.updated,settings:payload.settings||{},database:payload.database}));
+ // Director workspace records belong outside the officer-readable shared snapshot.
+ if(out.database)delete out.database.workspaceV614;
  if(out.database?.meta)for(const key of ['revision','lastSavedAt','storageModel'])delete out.database.meta[key];
  return out;
 }

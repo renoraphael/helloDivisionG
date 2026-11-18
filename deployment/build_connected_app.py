@@ -28,9 +28,18 @@ if args.version == 'v632':
   line=f'  candidate={migration}(candidate);\n'
   if source.count(line)!=1:parser.error('Missing or ambiguous embedded roster migration: '+migration)
   source=source.replace(line,'',1)
- for seed in ('v526-nickname-seed','v527-nickname-update','v615-tli2-surabaya','v617-past-exco'):
-  tag=f'<script id="{seed}">'
-  if source.count(tag)!=1:parser.error('Missing or ambiguous startup seed: '+seed)
+ # Projects & Meetings contains director-only notes. Hosted authorization
+ # currently operates on an officer-readable snapshot, not individual fields.
+ hosted_route="    if(id==='projects' && u.role!=='division-director') return false; /* v614: private to the Division Director */"
+ if source.count(hosted_route)!=1:parser.error('Missing or ambiguous director workspace route.')
+ source=source.replace(hosted_route,"    if(id==='projects') return false; /* Hosted workspace requires server-side authorization. */",1)
+ workspace_link=next((line for line in source.splitlines(keepends=True) if 'href="#projects" data-tab="projects"' in line),None)
+ if not workspace_link or source.count(workspace_link)!=1:parser.error('Missing or ambiguous director workspace navigation.')
+ source=source.replace(workspace_link,'',1)
+ blocks=('v526-nickname-seed','v527-nickname-update','v614-projects-workspace','v615-tli2-surabaya','v617-past-exco')
+ for block in blocks:
+  tag=f'<script id="{block}">'
+  if source.count(tag)!=1:parser.error('Missing or ambiguous hosted exclusion: '+block)
   start=source.index(tag)
   end=source.index('</script>',start)+len('</script>')
   source=source[:start]+source[end:]

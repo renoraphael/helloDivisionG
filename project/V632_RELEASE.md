@@ -7,11 +7,13 @@ The supplied desktop release adds the Projects & Meetings workspace and DCP trac
 | Asset | SHA-256 |
 | --- | --- |
 | Supplied offline v632 HTML | `f25b7f5edd31d9b77c3b244dcb1016f67c88be482d54d7ef222bfdad1e096aa9` |
-| Connected v632 HTML | `fc178d10cdf7a5220e0eb52c84b03bffa3c3be5ce3175fca0968d8092d03c34d` |
+| Connected v632 HTML | `9280e1836dbe980b6d3a19b98a3fb8f61a73003d5579e4f8e9c46f125b309a6f` |
 
 The connected build uses the existing Supabase Auth, officer approval, and revisioned save flow. It omits embedded November roster migrations and startup nickname, attendance, and past-officer inserts. The release package contains no database import. Review any historical data updates separately against the current shared records.
 
-Deploy the connected build as `hdg-private-app/v632.html`, apply the version-specific storage policy, and verify download permissions before merging the launcher change. Revert the launcher commit to return to the retained v514 object.
+The hosted build disables Projects & Meetings because its director-only notes would otherwise be stored in the officer-readable snapshot. The shared serializer drops workspace records, including those in imported backups. The supplied offline file retains its workspace. Re-enable the hosted workspace when director authorization can be enforced on its own records in Supabase.
+
+The build was uploaded as `hdg-private-app/v632.html`. The version-specific storage policy passed transaction-scoped checks for approved, unapproved, revoked, and anonymous access. All 151 inline scripts parsed. Mocked tests covered the sign-in gate, release marker, save retry and conflict handling, and exclusion of director workspace records from the shared snapshot. Real officer sign-in, browser sync, and iPhone verification remain pilot tasks. Revert the launcher change to return to the retained v514 object.
 
 ## Website and native iPhone app
 

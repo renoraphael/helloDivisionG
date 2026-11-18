@@ -28,4 +28,4 @@ The full legacy app is still a private local/Storage asset. Full GitHub-only col
 
 ## v632 release
 
-The release adds the Projects & Meetings workspace, DCP tracking, agenda and poster refinements, and Toastmasters blue and maroon themes. See the [release notes](project/V632_RELEASE.md). The prior private v514 object is the rollback target.
+The hosted release adds DCP tracking, agenda and poster refinements, and Toastmasters blue and maroon themes. Projects & Meetings is available in the offline file while its hosted access controls are developed. See the [release notes](project/V632_RELEASE.md). The prior private v514 object is the rollback target.
