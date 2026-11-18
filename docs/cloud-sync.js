@@ -128,36 +128,21 @@ function showAuthMode(create){
  el('hdg-auth-alternatives').hidden=create;
  el('hdg-auth-message').textContent='';
 }
-let memberViewAssets;
-function loadMemberView(){
- if(global.HDGMemberCommunity)return Promise.resolve(global.HDGMemberCommunity);
- if(!memberViewAssets){
-  const load=(tag,path)=>{
-   const asset=document.createElement(tag);
-   if(tag==='link'){asset.rel='stylesheet';asset.href=path;}
-   else asset.src=path;
-   return new Promise((resolve,reject)=>{
-    asset.onload=resolve;
-    asset.onerror=()=>{asset.remove();reject(new Error('The Community tools could not load. Refresh and try again.'));};
-    document.head.append(asset);
-   });
-  };
-  memberViewAssets=Promise.all([
-   load('link','member-community.css?v=v632-2'),load('script','member-tools.js'),load('script','member-community.js?v=v632-2')
-  ]).then(()=>global.HDGMemberCommunity);
- }
- return memberViewAssets;
-}
 async function showMemberCommunity(data){
- const memberView=await loadMemberView();
- const panel=memberView.mount(data,{
-  accountId:session.user.id,
-  signOut:async()=>{try{await request('/auth/v1/logout',{});}catch(_){}setSession(null);location.reload();}
+ const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v632-member.html',{
+  headers:{apikey:CONFIG.key,Authorization:'Bearer '+session.access_token},cache:'no-store'
  });
- el('hdg-cloud-gate').hidden=true;
- el('hdg-cloud-bar').remove();
- document.body.classList.add('hdg-authorized','hdg-community-page');
- document.body.append(panel);
+ if(!response.ok)throw new Error('The original Member workspace could not be loaded. Please refresh and try again.');
+ const html=await response.text();
+ const marker='/* HDG_MEMBER_V632_CONTEXT */';
+ if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)){
+  throw new Error('The stored file is not an original v632 Member build.');
+ }
+ const context=JSON.stringify({account:session.user.id,community:data}).replace(/</g,'\\u003c');
+ global.HDG_ENTRY_LOADER=false;
+ document.open();
+ document.write(html.replace(marker,()=> 'window.HDG_MEMBER_V632_CONTEXT='+context+';'));
+ document.close();
 }
 cloud.openBallot=token=>request('/rest/v1/rpc/hdg_open_ballot',{p_token:token},false);
 cloud.castBallot=(token,browserId,choices)=>request('/rest/v1/rpc/hdg_cast_ballot',{p_token:token,p_browser_id:browserId,p_choices:choices},false);

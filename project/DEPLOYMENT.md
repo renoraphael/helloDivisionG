@@ -31,3 +31,8 @@ For regular registration, leave email confirmation enabled and configure custom 
 
 
 For the Member workspace, apply `deployment/member-workspace.sql` after `community-access.sql` and rerun `deployment/test-community-access.sql`. The expanded projection is compatible with the original limited member launcher. The Pages deployment includes the member shell and its tools, plus a field-allowlisted snapshot of public District 87 club schedules from the v632 source. This release requires no replacement of the protected leader HTML.
+
+
+## Original v632 Member build
+
+Build with `python3 deployment/build_member_v632.py /private/path/HelloDivisionG_v632.html private-app/v632-member.html`. The original input is pinned by SHA-256. Upload the separate Member asset to the existing private bucket. Apply `deployment/member-workspace.sql` and `deployment/storage-policy-v632-member.sql`, then run the rollback-scoped access tests before enabling the launcher. Keep the raw v632 HTML and the officer build private, and retain the previous launcher as the rollback target.
