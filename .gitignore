@@ -31,3 +31,6 @@ private-app/*
 !private-app/README.md
 private-ios/
 local-data/
+
+# Third-party reference material (copyrighted, keep local only)
+docs/reference/
