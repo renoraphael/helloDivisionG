@@ -29,9 +29,11 @@ begin
  if public.hdg_access_mode() <> 'member' then raise exception 'Member was not matched'; end if;
  c := public.hdg_member_community();
  if jsonb_typeof(c->'clubs') <> 'array' or jsonb_typeof(c->'meetings') <> 'array'
-   or (c - array['clubs','meetings']) <> '{}'::jsonb
-   or exists (select 1 from jsonb_array_elements(c->'clubs') x where (x - array['name','city','area','mode']) <> '{}'::jsonb)
-   or exists (select 1 from jsonb_array_elements(c->'meetings') x where (x - array['club','date','time','timezone']) <> '{}'::jsonb) then
+   or (c - array['clubs','meetings','events','leaders']) <> '{}'::jsonb
+   or exists (select 1 from jsonb_array_elements(c->'clubs') x where (x - array['name','city','area','mode','number','schedule','timezone','inactive','award']) <> '{}'::jsonb)
+   or exists (select 1 from jsonb_array_elements(c->'meetings') x where (x - array['club','date','time','timezone']) <> '{}'::jsonb)
+   or exists (select 1 from jsonb_array_elements(c->'events') x where (x - array['kind','title','date','time','timezone']) <> '{}'::jsonb)
+   or exists (select 1 from jsonb_array_elements(c->'leaders') x where (x - array['name','role','scope']) <> '{}'::jsonb) then
    raise exception 'Community projection includes unexpected fields';
  end if;
  if exists(select 1 from public.hdg_sync_state) then raise exception 'Member could read leadership data'; end if;

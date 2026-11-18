@@ -128,37 +128,32 @@ function showAuthMode(create){
  el('hdg-auth-alternatives').hidden=create;
  el('hdg-auth-message').textContent='';
 }
-function cell(tag,text){
- const element=document.createElement(tag);
- element.textContent=text;
- return element;
-}
-function showMemberCommunity(data){
- const panel=document.createElement('main');
- panel.className='hdg-member-community';
- const header=document.createElement('header');
- header.append(cell('h1','Community'));
- const signOut=cell('button','Sign out');
- signOut.type='button';
- signOut.onclick=async()=>{try{await request('/auth/v1/logout',{});}catch(_){}setSession(null);location.reload();};
- header.append(signOut);
- panel.append(header);
- for(const [title,items,type,empty] of [
-  ['Upcoming meetings',data.meetings,'meeting','No upcoming meeting agendas are available.'],
-  ['Division G clubs',data.clubs,'club','No clubs are available.']
- ]){
-  const section=document.createElement('section'),list=document.createElement('ul');
-  section.append(cell('h2',title));
-  for(const item of items||[]){
-   const row=document.createElement('li');
-   row.append(cell('strong',type==='meeting'?item.club||'Club meeting':item.name));
-   const detail=type==='meeting'?[item.date,item.time,item.timezone]:[item.area,item.city,item.mode];
-   row.append(cell('span',detail.filter(Boolean).join(' · ')));
-   list.append(row);
-  }
-  section.append(list.childElementCount?list:cell('p',empty));
-  panel.append(section);
+let memberViewAssets;
+function loadMemberView(){
+ if(global.HDGMemberCommunity)return Promise.resolve(global.HDGMemberCommunity);
+ if(!memberViewAssets){
+  const load=(tag,path)=>{
+   const asset=document.createElement(tag);
+   if(tag==='link'){asset.rel='stylesheet';asset.href=path;}
+   else asset.src=path;
+   return new Promise((resolve,reject)=>{
+    asset.onload=resolve;
+    asset.onerror=()=>{asset.remove();reject(new Error('The Community tools could not load. Refresh and try again.'));};
+    document.head.append(asset);
+   });
+  };
+  memberViewAssets=Promise.all([
+   load('link','member-community.css'),load('script','member-tools.js'),load('script','member-community.js')
+  ]).then(()=>global.HDGMemberCommunity);
  }
+ return memberViewAssets;
+}
+async function showMemberCommunity(data){
+ const memberView=await loadMemberView();
+ const panel=memberView.mount(data,{
+  accountId:session.user.id,
+  signOut:async()=>{try{await request('/auth/v1/logout',{});}catch(_){}setSession(null);location.reload();}
+ });
  el('hdg-cloud-gate').hidden=true;
  el('hdg-cloud-bar').remove();
  document.body.classList.add('hdg-authorized','hdg-community-page');
@@ -270,7 +265,7 @@ async function connect(){
  if(global.HDG_ENTRY_LOADER){
   const mode=await request('/rest/v1/rpc/hdg_access_mode',{});
   if(mode==='member'){
-   showMemberCommunity(await request('/rest/v1/rpc/hdg_member_community',{}));
+   await showMemberCommunity(await request('/rest/v1/rpc/hdg_member_community',{}));
    return;
   }
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');

@@ -32,6 +32,13 @@ function fixture(mode, path = '') {
   };
   const context = {
     HDG_ENTRY_LOADER: true, URLSearchParams, Date, structuredClone,
+    HDGMemberCommunity: { mount(data, { accountId }) {
+      assert.equal(accountId, 'fixture');
+      assert.equal(data.clubs[0].name, 'Fixture Club');
+      const panel = new Element();
+      panel.className = 'member-shell';
+      return panel;
+    }},
     crypto: { randomUUID: () => 'fixture-request-id' },
     location: { search: path, hash: '', protocol: 'https:' },
     sessionStorage: { getItem: key => mode && key==='hdg.cloud.session.v1' ? JSON.stringify(confirmed) : null },
@@ -102,7 +109,7 @@ async function main() {
   assert.equal(app.requests.length, 2);
   assert.match(app.requests[1].url, /hdg_member_community$/);
   assert.equal(app.writes.length, 0);
-  assert.equal(app.body.children.at(-1).className, 'hdg-member-community');
+  assert.equal(app.body.children.at(-1).className, 'member-shell');
 
   app = fixture('leader');
   await app.cloud.boot();
