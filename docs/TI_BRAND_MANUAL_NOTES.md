@@ -45,6 +45,7 @@ Contacts: brand@toastmasters.org (brand questions), trademarks@toastmasters.org 
 - Name badges, ribbons and pins may not be produced locally. Club banners only from a purchased digital design.
 
 ## Things to watch in Hello Division G
+- Known exception (owner decision, 2026-11-18): the Division keeps its own "Hello Division G" logo and name even though the manual says Divisions may not create their own logo, theme or tagline.
 - Posters and agendas are Division materials: logo only on palette colours, correct clear space, no custom Division logo or tagline.
 - If the website is ever shared beyond members, add the website disclaimer above to the footer.
 - Do not host or re-upload Toastmasters-provided materials on the public GitHub Pages site.
