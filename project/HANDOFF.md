@@ -20,6 +20,10 @@ The v632 Community release uses the same Supabase Auth instance. Confirmed activ
 
 Apply `deployment/community-access.sql`, upload the private `v632-community.html` build, and run `deployment/test-community-access.sql` before enabling the launcher. Keep the original `v632.html` and prior launcher for rollback. Member email registration requires custom SMTP for external delivery. The live pilot confirmed the member login. A leadership login smoke test found a local IndexedDB write race between startup activity and the first shared-state load. The adapter serializes writes in a tab and uses a Web Lock across tabs when available. The native iPhone app is outside this release.
 
+## Brand constitution update (19 November 2026)
+
+Branch docs/ti-brand-constitution adds docs/TI_BRAND_CONSTITUTION.md (Toastmasters colours, gradients, transparencies, fonts, and the owner's colour/type hierarchy rules) and docs/TI_BRAND_MANUAL_NOTES.md (summary of the 41-page Brand Manual v2.0), with a pointer in AGENTS.md. The full manual PDF stays local in docs/reference/, which is git-ignored because it is third-party copyrighted material. Documentation only: no app, launcher, database, or protected-asset changes, and nothing deployed. The owner's Division G logo is a recorded exception to the manual's rule against custom Division logos. The owner-approved Toastmasters themes in the separate private v632 build were not touched. Next step: owner reviews and merges; future visual work follows the constitution.
+
 ## v632 update
 
 See [V632_RELEASE.md](V632_RELEASE.md) for source hashes, rollout order, and the mobile integration path. The connected build omits offline roster, nickname, and historical attendance backfills so those updates can be reviewed independently against the shared database. The v632 storage policy passed approval and access tests. The hosted build disables Projects & Meetings and filters that workspace out of shared snapshots because the notes are director-only. Keep v514 available for rollback.
