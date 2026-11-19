@@ -1,6 +1,6 @@
 # Toastmasters International Brand Constitution
 
-Source: Toastmasters International Brand Manual v2.0 (Rev. 03/2026). The rest of the manual (logo, photography, websites, videos, approvals) is summarised in `TI_BRAND_MANUAL_NOTES.md`; the full PDF is kept locally in `docs/reference/` (git-ignored). These rules govern every Hello Division G design: the app themes, agendas, posters, slides and the iPhone app. Where a design choice conflicts with this document, this document wins. Read it before changing colours, fonts or layout.
+Source: Toastmasters International Brand Manual v2.0 (Rev. 03/2026). The rest of the manual (logo, photography, websites, videos, approvals) is summarised in `TI_BRAND_MANUAL_NOTES.md`; the full PDF is kept locally in `project/reference/` (git-ignored). These rules govern every Hello Division G design: the app themes, agendas, posters, slides and the iPhone app. Where a design choice conflicts with this document, this document wins. Read it before changing colours, fonts or layout.
 
 ## 1. Core colours
 

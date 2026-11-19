@@ -22,7 +22,7 @@ Apply `deployment/community-access.sql`, upload the private `v632-community.html
 
 ## Brand constitution update (19 November 2026)
 
-Branch docs/ti-brand-constitution adds docs/TI_BRAND_CONSTITUTION.md (Toastmasters colours, gradients, transparencies, fonts, and the owner's colour/type hierarchy rules) and docs/TI_BRAND_MANUAL_NOTES.md (summary of the 41-page Brand Manual v2.0), with a pointer in AGENTS.md. The full manual PDF stays local in docs/reference/, which is git-ignored because it is third-party copyrighted material. Documentation only: no app, launcher, database, or protected-asset changes, and nothing deployed. The owner's Division G logo is a recorded exception to the manual's rule against custom Division logos. The owner-approved Toastmasters themes in the separate private v632 build were not touched. Next step: owner reviews and merges; future visual work follows the constitution.
+Branch docs/ti-brand-constitution adds project/TI_BRAND_CONSTITUTION.md (Toastmasters colours, gradients, transparencies, fonts, and the owner's colour/type hierarchy rules) and project/TI_BRAND_MANUAL_NOTES.md (summary of the 41-page Brand Manual v2.0), with a pointer in AGENTS.md. The full manual PDF stays local in project/reference/, which is git-ignored because it is third-party copyrighted material. Documentation only: no app, launcher, database, or protected-asset changes, and nothing deployed. The owner's Division G logo is a recorded exception to the manual's rule against custom Division logos. The owner-approved Toastmasters themes in the separate private v632 build were not touched. Next step: owner reviews and merges; future visual work follows the constitution.
 
 ## v632 update
 

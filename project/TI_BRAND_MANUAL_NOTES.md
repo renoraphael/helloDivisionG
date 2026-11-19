@@ -1,6 +1,6 @@
 # Toastmasters Brand Manual: working notes
 
-Summary of the Toastmasters International Brand Manual, Version 2.0 (Rev. 03/2026, 41 pages). The full PDF is kept locally at `docs/reference/02330-001-0001-brand-manual.pdf` (git-ignored because it is Toastmasters' copyrighted material and this repository is public). Page numbers below refer to that PDF. The core colour, gradient, transparency and font rules are in `TI_BRAND_CONSTITUTION.md`; this file holds everything else that can bite a design later.
+Summary of the Toastmasters International Brand Manual, Version 2.0 (Rev. 03/2026, 41 pages). The full PDF is kept locally at `project/reference/02330-001-0001-brand-manual.pdf` (git-ignored because it is Toastmasters' copyrighted material and this repository is public). Page numbers below refer to that PDF. The core colour, gradient, transparency and font rules are in `TI_BRAND_CONSTITUTION.md`; this file holds everything else that can bite a design later.
 
 Contacts: brand@toastmasters.org (brand questions), trademarks@toastmasters.org (trademarks), toastmasters.org/TrademarkUseRequest (requests).
 
