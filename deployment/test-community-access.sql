@@ -87,10 +87,10 @@ begin
    raise exception 'Club officers did not match the current Division G roster';
  end if;
  if exists(select 1 from public.hdg_sync_state) then raise exception 'Member could read leadership data'; end if;
- if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html','v632-member-club-officers.html','v632-member-dcp.html','v632-member-agenda-roster.html','v632-member-agenda-sidebar.html')) then
+ if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html','v632-member-club-officers.html','v632-member-dcp.html','v632-member-agenda-roster.html','v632-member-agenda-sidebar.html','v632-member-agenda-attendance.html')) then
    raise exception 'Member could read the leadership application';
  end if;
- if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-agenda-sidebar.html') then
+ if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-agenda-attendance.html') then
    raise exception 'Member could not read the original workspace build';
  end if;
  begin

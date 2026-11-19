@@ -163,12 +163,14 @@ segment("function agendaRefreshRecordClubData(record,club){", "function agendaCr
   "  const formerVenueDefault=[club.city,club.island].filter(Boolean).join(' · ');\n  if(!record.venue||record.venue===formerVenueDefault)record.venue=defaults.venue;"))
 replace('<div class="field agenda-core-venue"><label>Venue</label><input id="agendaEditVenue"></div>',
  '<div class="field agenda-core-venue"><label>Venue</label><input id="agendaEditVenue"></div>\n'
- '<div class="field"><label for="agendaEditMeetingMode">Meeting format</label><select class="app-standard-select" id="agendaEditMeetingMode">'
+ '<div class="field"><label for="agendaEditMeetingMode">Attendance</label><select class="app-standard-select" id="agendaEditMeetingMode">'
  '<option value="">Use club default</option><option>Hybrid</option><option>Online</option><option>In-person</option></select></div>')
+replace("    const [date,template,theme,wod,venue]=fields;", "    const [date,template,theme,wod,venue,attendance]=fields;")
+replace("    secondaryGrid.append(template,venue);", "    secondaryGrid.append(template,venue,attendance);")
 replace("  set('agendaEditVenue',record.venue);",
  "  set('agendaEditVenue',record.venue);\n  set('agendaEditMeetingMode',record.mode);")
 replace("  record.venue=get('agendaEditVenue');",
- "  record.venue=get('agendaEditVenue');\n  record.mode=get('agendaEditMeetingMode');")
+ "  record.venue=get('agendaEditVenue');\n  if($('agendaEditMeetingMode'))record.mode=get('agendaEditMeetingMode');")
 # The join slide renderer still exists and can use club contacts entered by the member.
 source=re.sub(r"contacts:\[\{name:'Sindhu',phone:.*?\}\]",'contacts:[]',source,count=1)
 
