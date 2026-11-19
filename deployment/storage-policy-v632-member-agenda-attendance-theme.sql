@@ -1,0 +1,5 @@
+begin;
+create policy hdg_approved_v632_member_agenda_attendance_theme_download on storage.objects for select to authenticated
+ using (bucket_id = 'hdg-private-app' and name = 'v632-member-agenda-attendance-theme.html'
+        and (select public.hdg_access_mode()) = 'member');
+commit;

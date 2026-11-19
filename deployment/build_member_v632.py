@@ -169,6 +169,13 @@ replace("    const [date,template,theme,wod,venue]=fields;", "    const [date,te
 replace("    secondaryGrid.append(template,venue);", "    secondaryGrid.append(template,venue,attendance);")
 replace("  set('agendaEditVenue',record.venue);",
  "  set('agendaEditVenue',record.venue);\n  set('agendaEditMeetingMode',record.mode);")
+# The screen backdrop belongs to the app chrome. The A4 style is club-owned.
+replace('.agenda-a4-stage{display:flex;justify-content:center;overflow:auto;padding:14px;border:1px solid #2C609C;border-radius:13px;background:#062E5D}',
+ """ .agenda-a4-stage{display:flex;justify-content:center;overflow:auto;padding:14px;border:1px solid #2C609C;border-radius:13px;background:#062E5D}
+@media screen {
+ html.theme-ti #agendaGeneratedView{background:#004165;border-color:rgba(169,178,177,.48)}
+ html.theme-maroon #agendaGeneratedView{background:#772432;border-color:rgba(169,178,177,.48)}
+}""")
 replace("  record.venue=get('agendaEditVenue');",
  "  record.venue=get('agendaEditVenue');\n  if($('agendaEditMeetingMode'))record.mode=get('agendaEditMeetingMode');")
 # The join slide renderer still exists and can use club contacts entered by the member.
