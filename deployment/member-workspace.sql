@@ -70,6 +70,28 @@ begin
      ) schedule
      where day ~ '^\d{4}-\d{2}-\d{2}$' and nullif(title,'') is not null
    ), '[]'::jsonb),
+   'clubOfficers', coalesce((
+     select jsonb_agg(jsonb_build_object('clubNumber', club_number, 'role', role, 'name', name)
+       order by club_number, role)
+     from (
+       select distinct on (club_number, role) club_number, role, name
+       from (
+         select ltrim(btrim(o->>'clubNumber'), '0') as club_number, o->>'role' as role,
+           btrim(o->>'name') as name, roster_position
+         from jsonb_array_elements(snapshot->'exco') with ordinality as records(o, roster_position)
+         where o->>'role' in ('Club President', 'Club VP Education', 'Club VP Membership')
+           and o->'past' is distinct from 'true'::jsonb
+           and coalesce(substring(o->>'term' from '.*([0-9]{4}-[0-9]{2}-[0-9]{2})'),
+             '9999-12-31') >= (now() at time zone 'Asia/Makassar')::date::text
+       ) current_officers
+       where name <> '' and club_number ~ '^[0-9]+$'
+         and exists (
+           select 1 from jsonb_array_elements(snapshot->'clubs') c
+           where ltrim(btrim(c->>'number'), '0') = club_number
+         )
+       order by club_number, role, roster_position
+     ) roster
+   ), '[]'::jsonb),
    'leaders', coalesce((
      select jsonb_agg(jsonb_build_object('name', name, 'role', title, 'scope', area) order by area, title)
      from (

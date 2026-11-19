@@ -30,6 +30,14 @@
   if(number)byNumber.set(number.replace(/^0+/,''),info);
   return info;
  });
+ const clubOfficers=new Map();
+ for(const row of data.clubOfficers||[]){
+  const number=safeText(row.clubNumber,24).trim().replace(/^0+/,'');
+  const name=safeText(row.name,120).trim();
+  if(!name||!byNumber.has(number)||!['Club President','Club VP Education','Club VP Membership'].includes(row.role))continue;
+  if(!clubOfficers.has(number))clubOfficers.set(number,new Map());
+  clubOfficers.get(number).set(row.role,{name});
+ }
  const director=(data.leaders||[]).find(row=>row.role==='Division Director');
  const areas=(data.leaders||[]).filter(row=>row.role==='Area Director').map(row=>({code:safeText(row.scope,16),director:safeText(row.name,120)}));
  const tlis=[],contests=[],specialMeetings=[];
@@ -51,7 +59,7 @@
    if(club)specialMeetings.push({...item,clubNumber:club.number,clubName:club.name});
   }
  }
- global.HDG_MEMBER_V632_DATA={clubs,areas,tlis,contests,specialMeetings,updated:safeText(data.updated,64),
+ global.HDG_MEMBER_V632_DATA={clubs,clubOfficers,areas,tlis,contests,specialMeetings,updated:safeText(data.updated,64),
   director:safeText(director?.name,120),memberName:safeText(data.memberName,120).trim()||'Member'};
  global.HDG_MEMBER_V632_ACCOUNT=/^[0-9a-f-]{36}$/i.test(input.account||'')?input.account:'preview';
  global.addEventListener('DOMContentLoaded',()=>{
