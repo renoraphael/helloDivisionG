@@ -18,6 +18,9 @@ These project instructions apply to every coding assistant used on this project.
 - Never reset, force-push, overwrite, or delete another agent's work to resolve a conflict without understanding it.
 - Keep one change focused on one task. Update project/HANDOFF.md with actual work, checks, remaining risks, and deployment state. Do not claim tests or deployment ran unless verified.
 
+## Brand
+- Follow project/TI_BRAND_CONSTITUTION.md (Toastmasters International colours, gradients, transparencies and fonts) for visual design. Notes on the rest of the brand manual are in project/TI_BRAND_MANUAL_NOTES.md.
+
 ## Verification and deployment
 - Check relevant desktop/mobile browser behavior for website edits. Report whether an iPhone build was actually verified.
 - Use synthetic records for tests. Never put live member data into test fixtures or public logs.
