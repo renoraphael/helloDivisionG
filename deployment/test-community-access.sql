@@ -38,6 +38,9 @@ update public.hdg_sync_state set payload = jsonb_set(jsonb_set(payload,'{databas
   {"clubNumber":"12345678901","role":"Club President","name":"Outside Division"}
  ]'::jsonb) where division_code='G';
 
+insert into hdg_community_private.club_agenda_defaults(club_number, settings)
+values ('12345678', '{"zoomId":"fixture-id","zoomPass":"fixture-pass","other":"omit","people":{"fixture president":{"ig":"@fixture","email":"fixture@example.invalid","other":"omit"}}}');
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000006322',true);
 do $$
@@ -46,8 +49,16 @@ begin
  if public.hdg_access_mode() <> 'member' then raise exception 'Member was not matched'; end if;
  c := public.hdg_member_community();
  if c->>'memberName' is distinct from 'Fixture Member' then raise exception 'Member name did not resolve'; end if;
+ if c #> '{clubAgendaDefaults,12345678}' is distinct from
+   '{"zoomId":"fixture-id","zoomPass":"fixture-pass","people":{"fixture president":{"ig":"@fixture","email":"fixture@example.invalid"}}}'::jsonb then
+   raise exception 'Signed-in member cannot read the club sidebar defaults';
+ end if;
+ begin
+   perform 1 from hdg_community_private.club_agenda_defaults;
+   raise exception 'Member can query private defaults table directly';
+ exception when insufficient_privilege then null; end;
  if jsonb_typeof(c->'clubs') <> 'array' or jsonb_typeof(c->'meetings') <> 'array'
-   or (c - array['clubs','meetings','events','leaders','clubOfficers','agendaMembers','updated','memberName']) <> '{}'::jsonb
+   or (c - array['clubs','meetings','events','leaders','clubOfficers','agendaMembers','clubAgendaDefaults','updated','memberName']) <> '{}'::jsonb
    or exists (select 1 from jsonb_array_elements(c->'clubs') x where (x - array['name','city','area','mode','number','schedule','timezone','inactive','award','island','meetingMode','locationTitle','locationAddress','publicLocation','shortName','fill','text','accent','dcpGoals']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'meetings') x where (x - array['club','date','time','timezone']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'events') x where (x - array['kind','title','date','time','timezone','clubNumber']) <> '{}'::jsonb)
@@ -87,10 +98,10 @@ begin
    raise exception 'Club officers did not match the current Division G roster';
  end if;
  if exists(select 1 from public.hdg_sync_state) then raise exception 'Member could read leadership data'; end if;
- if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html','v632-member-club-officers.html','v632-member-dcp.html','v632-member-agenda-roster.html','v632-member-agenda-sidebar.html','v632-member-agenda-attendance.html','v632-member-agenda-attendance-theme.html')) then
+ if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html','v632-member-club-officers.html','v632-member-dcp.html','v632-member-agenda-roster.html','v632-member-agenda-sidebar.html','v632-member-agenda-attendance.html','v632-member-agenda-attendance-theme.html','v632-member-agenda-defaults.html')) then
    raise exception 'Member could read the leadership application';
  end if;
- if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-agenda-attendance-theme.html') then
+ if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-agenda-defaults.html') then
    raise exception 'Member could not read the original workspace build';
  end if;
  begin
@@ -111,6 +122,9 @@ select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000006324'
 do $$begin
  if public.hdg_access_mode() <> 'member' or exists(select 1 from public.hdg_sync_state) then
    raise exception 'Beta member role is incorrect';
+ end if;
+ if public.hdg_member_community() #>> '{clubAgendaDefaults,12345678,zoomPass}' is distinct from 'fixture-pass' then
+   raise exception 'Visiting Member cannot read the club sidebar defaults';
  end if;
  if public.hdg_member_community()->>'memberName' is not null then
    raise exception 'Unmatched beta account received a roster name';
