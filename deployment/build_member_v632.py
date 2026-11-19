@@ -76,9 +76,12 @@ segment('function ensureMemberAliasRegistry(data){','function applyKnownMemberId
 }
 
 ''')
+replace('<div class="subbrand">District 87 · Region 9 · Toastmasters reporting system</div>',
+ '<div class="subbrand">District 87 · Region 9</div>')
+segment('        <div class="member-community-nav-head">','        <button type="button" class="member-community-link active"', '')
 segment('const DASHBOARD_USERS={','function dashboardUserCatalog(){', '''const DASHBOARD_USERS={
  division:{name:'Division Director'},
- member:{id:'member',role:'member',name:'Division G Member',shortName:'Member',area:'',label:'Community access',avatar:'G'}
+ member:{id:'member',role:'member',name:window.HDG_MEMBER_V632_DATA.memberName,shortName:window.HDG_MEMBER_V632_DATA.memberName,area:'',label:'Community access',avatar:Array.from(window.HDG_MEMBER_V632_DATA.memberName)[0].toUpperCase()}
 };
 ''')
 segment('function activeDashboardUser(){','function renderUserSwitcherChoices(){',

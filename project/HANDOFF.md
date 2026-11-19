@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 18 November 2026 (Asia/Makassar).
+Updated 19 November 2026 (Asia/Makassar).
 
 ## Owner's objective
 Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hello Division G project without losing changes, leaking member data, or relying on one chat's memory.
@@ -15,6 +15,9 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - The generated private-app/v632.html is ignored by Git.
 
 ## Member Community and link ballots
+
+The Member header uses the signed-in account’s active roster name. The Member-only build omits the sidebar’s Community / Member tools heading and uses the shorter District 87 · Region 9 subbrand. The release uses `v632-member-profile.html` with a version-specific Storage policy. Keep the prior asset available for rollback.
+
 
 The v632 Community release uses the same Supabase Auth instance. Confirmed active roster emails open the member Community view. The signed-in Member view runs the original v632 markup, styles, and meeting tools. Build it using `deployment/build_member_v632.py` and the exact supplied source, then upload the ignored artifact as `hdg-private-app/v632-member.html`. The builder strips the offline roster, officer contacts, personal aliases, reports, examples containing private records, and historical meeting image/QR references. Supabase sends only the Community projection. Its storage policy lets members download the Member artifact and keeps the officer snapshot and full app protected. The original Member workspace saves its drafts in a per-account browser namespace. Leadership access still requires approval, and leaders retain the existing shared dashboard. Temporary beta access is granted by account ID. The unsigned ballot page receives only the ballot title and candidate choices. The officer who publishes the ballot can refresh the private link tally from Timer & Ballot.
 

@@ -11,6 +11,8 @@ function fixture(mode, path = '') {
   class Element {
     constructor() {
       this.children = [];
+      this.dataset = {};
+      this.value = "";
       this.classList = { add() {}, remove() {} };
     }
     set innerHTML(value) {
@@ -47,12 +49,12 @@ function fixture(mode, path = '') {
         ok: true,
         json: async () => {
           if (route.endsWith('hdg_access_mode')) return mode;
-          if (route.endsWith('hdg_member_community')) return { clubs: [{ name: 'Fixture Club' }], meetings: [] };
+          if (route.endsWith('hdg_member_community')) return { clubs: [{ name: 'Fixture Club' }], meetings: [], memberName:'Fixture Member' };
           if (route.endsWith('hdg_sync_state')) return [{ revision: 1 }];
           if (route.endsWith('hdg_open_ballot')) return { title: 'Fixture ballot', choices: {} };
           throw new Error('Unexpected request ' + route);
         },
-        text: async () => route.endsWith('/v632-member.html')
+        text: async () => route.endsWith('/v632-member-profile.html')
           ? '<script id="hdg-member-context">/* HDG_MEMBER_V632_CONTEXT */</script>'
           : '<html>hdg-cloud-adapter window.__HDG_APP_RELEASE__="v632-community";</html>'
       };
@@ -103,9 +105,10 @@ async function main() {
   await app.cloud.boot();
   assert.equal(app.requests.length, 3);
   assert.match(app.requests[1].url, /hdg_member_community$/);
-  assert.match(app.requests[2].url, /v632-member\.html$/);
+  assert.match(app.requests[2].url, /v632-member-profile\.html$/);
   assert.equal(app.writes.length, 1);
   assert.match(app.writes[0], /HDG_MEMBER_V632_CONTEXT=.*Fixture Club/);
+  assert.match(app.writes[0], /"memberName":"Fixture Member"/);
 
   app = fixture('leader');
   await app.cloud.boot();

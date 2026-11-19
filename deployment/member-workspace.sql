@@ -5,6 +5,7 @@ returns jsonb language plpgsql stable security definer set search_path = '' as $
 declare snapshot jsonb;
 declare division_director text;
 declare synced_at timestamptz;
+declare member_name text;
 begin
  if public.hdg_access_mode() not in ('member', 'leader') then
    raise exception 'Verified Toastmasters membership required' using errcode = '42501';
@@ -12,7 +13,20 @@ begin
  select payload->'database', payload #>> '{settings,divisionDirector}', updated_at
  into snapshot, division_director, synced_at from public.hdg_sync_state where division_code = 'G';
 
+ select nullif(btrim(m->>'name'),'') into member_name
+ from auth.users u
+ cross join lateral jsonb_array_elements(snapshot->'memberships') m
+ where u.id = auth.uid()
+   and u.email_confirmed_at is not null
+   and lower(btrim(m->>'email')) = lower(btrim(u.email))
+   and m->>'active' = 'true'
+   and coalesce(m->>'pastMember','false') <> 'true'
+   and nullif(btrim(m->>'name'),'') is not null
+ order by m->>'lastSeen' desc nulls last, btrim(m->>'name')
+ limit 1;
+
  return jsonb_build_object(
+   'memberName', member_name,
    'updated', synced_at,
    'clubs', coalesce((
      select jsonb_agg(jsonb_build_object(

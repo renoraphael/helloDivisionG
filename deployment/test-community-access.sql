@@ -16,7 +16,7 @@ insert into hdg_community_private.beta_members(user_id) values
 
 update public.hdg_sync_state set payload = jsonb_set(payload,'{database,memberships}',
  (payload #> '{database,memberships}') || '[
-  {"email":" HDG-TEST-MEMBER@example.invalid ","active":true},
+  {"name":"Fixture Member","email":" HDG-TEST-MEMBER@example.invalid ","active":true},
   {"email":"hdg-test-unknown@example.invalid","active":false,"pastMember":true},
   {"email":"hdg-test-unverified@example.invalid","active":true}
  ]'::jsonb) where division_code='G';
@@ -28,8 +28,9 @@ declare c jsonb;
 begin
  if public.hdg_access_mode() <> 'member' then raise exception 'Member was not matched'; end if;
  c := public.hdg_member_community();
+ if c->>'memberName' is distinct from 'Fixture Member' then raise exception 'Member name did not resolve'; end if;
  if jsonb_typeof(c->'clubs') <> 'array' or jsonb_typeof(c->'meetings') <> 'array'
-   or (c - array['clubs','meetings','events','leaders','updated']) <> '{}'::jsonb
+   or (c - array['clubs','meetings','events','leaders','updated','memberName']) <> '{}'::jsonb
    or exists (select 1 from jsonb_array_elements(c->'clubs') x where (x - array['name','city','area','mode','number','schedule','timezone','inactive','award','island','shortName','fill','text','accent']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'meetings') x where (x - array['club','date','time','timezone']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'events') x where (x - array['kind','title','date','time','timezone','clubNumber']) <> '{}'::jsonb)
@@ -37,10 +38,10 @@ begin
    raise exception 'Community projection includes unexpected fields';
  end if;
  if exists(select 1 from public.hdg_sync_state) then raise exception 'Member could read leadership data'; end if;
- if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name <> 'v632-member.html') then
+ if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html')) then
    raise exception 'Member could read the leadership application';
  end if;
- if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member.html') then
+ if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-profile.html') then
    raise exception 'Member could not read the original workspace build';
  end if;
  begin
@@ -61,6 +62,9 @@ select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000006324'
 do $$begin
  if public.hdg_access_mode() <> 'member' or exists(select 1 from public.hdg_sync_state) then
    raise exception 'Beta member role is incorrect';
+ end if;
+ if public.hdg_member_community()->>'memberName' is not null then
+   raise exception 'Unmatched beta account received a roster name';
  end if;
 end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000006325',true);

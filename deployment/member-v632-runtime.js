@@ -52,7 +52,7 @@
   }
  }
  global.HDG_MEMBER_V632_DATA={clubs,areas,tlis,contests,specialMeetings,updated:safeText(data.updated,64),
-  director:safeText(director?.name,120)};
+  director:safeText(director?.name,120),memberName:safeText(data.memberName,120).trim()||'Member'};
  global.HDG_MEMBER_V632_ACCOUNT=/^[0-9a-f-]{36}$/i.test(input.account||'')?input.account:'preview';
  global.addEventListener('DOMContentLoaded',()=>{
   const switcher=document.getElementById('userSwitcher');
