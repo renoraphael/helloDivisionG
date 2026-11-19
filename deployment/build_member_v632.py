@@ -80,6 +80,19 @@ segment('function ensureMemberAliasRegistry(data){','function applyKnownMemberId
 replace('<div class="subbrand">District 87 · Region 9 · Toastmasters reporting system</div>',
  '<div class="subbrand">District 87 · Region 9</div>')
 segment('        <div class="member-community-nav-head">','        <button type="button" class="member-community-link active"', '')
+# The original council renderer hard-coded a name. The Member asset uses the
+# authorised Community projection instead of that redacted literal.
+source,director_calls=re.subn(r"(leadershipDirectorCard\('division','G','DIVISION G DIRECTOR',)'[^']*'(,'District 87 · Region 9'\))",r"\1(db.settings?.divisionDirector||'Division Director')\2",source)
+assert director_calls==2
+replace('<span class="leadership-elected-note">Elected position · cannot dismiss</span>','')
+replace('  return ensureLeadershipTeams().filter(x=>x.scopeType===scopeType&&x.scope===scope);',
+ '  return ensureLeadershipTeams().filter(x=>x.scopeType===scopeType&&x.scope===scope&&x.name!==\"Member\");')
+# Keep the existing v632 theme control in the Member toolbar and cycle the
+# two Toastmasters palettes through the original theme setter.
+replace('body.role-member .toolbar-shell > :not(.user-switcher){display:none!important}',
+ 'body.role-member .toolbar-shell > :not(.user-switcher):not(#v622ThemeBtn){display:none!important}')
+replace("ORDER=['classic','ti','maroon'];","ORDER=['ti','maroon'];")
+replace("b.setAttribute('aria-pressed',t==='classic'?'false':'true')","b.setAttribute('aria-pressed',String(t==='maroon'))")
 segment('const DASHBOARD_USERS={','function dashboardUserCatalog(){', '''const DASHBOARD_USERS={
  division:{name:'Division Director'},
  member:{id:'member',role:'member',name:window.HDG_MEMBER_V632_DATA.memberName,shortName:window.HDG_MEMBER_V632_DATA.memberName,area:'',label:'Community access',avatar:Array.from(window.HDG_MEMBER_V632_DATA.memberName)[0].toUpperCase()}
