@@ -4,6 +4,7 @@ from hashlib import sha256
 import json
 import re
 import unicodedata
+from urllib.parse import urlsplit, urlunsplit
 
 parser=argparse.ArgumentParser(description="Compile the original v632 Member runtime with private seeds removed.")
 parser.add_argument('source',type=Path)
@@ -117,8 +118,39 @@ pattern=r'(?m)^(const DISTRICT87_DISCOVERY_DETAILS=Object.freeze\()(.+)\);$'
 m=re.search(pattern,source)
 discovery=json.loads(m[2])
 allowed={'meetingSchedule','meetingMode','timezone','ianaTimezone','onlineAttendance','verifiedAt','charterDate','restriction'}
-projected={k:{name:value for name,value in row.items() if name in allowed} for k,row in discovery.items()}
+projected={}
+for number, row in discovery.items():
+ profile={name:value for name,value in row.items() if name in allowed}
+ provenance=row.get('source','')
+ if provenance in ('Toastmasters Find a Club','Division G local directory') or re.fullmatch(r'Division G club schedule update · [0-9-]+',provenance):
+  profile['source']=provenance
+ url=urlsplit(row.get('officialUrl',''))
+ match=re.fullmatch(r'(/find-a-club/([0-9]+)(?:-[a-z0-9-]*)?)/?(?:contact-club/?|)$',url.path,re.I)
+ if url.scheme=='https' and url.netloc.lower()=='www.toastmasters.org' and match and int(match[2])==int(number):
+  profile['officialUrl']=urlunsplit(('https','www.toastmasters.org',match[1],'',''))
+ projected[number]=profile
 source=source[:m.start(2)]+json.dumps(projected,ensure_ascii=False,separators=(',',':'))+source[m.end(2):]
+
+# Earlier Member builds cached public details without their provenance. Restore
+# the metadata for matching schedules, without relabeling a changed schedule.
+replace("  window.district87ProfileMap=function(){ensureOperationalDataV315(db);return db.database?.district87Profiles||{};};", """  const directorySourcesRepaired = new WeakSet();
+  window.district87ProfileMap=function(){
+    ensureOperationalDataV315(db);
+    const profiles=db.database.district87Profiles;
+    if(!directorySourcesRepaired.has(profiles)){
+      for(const [number,profile] of Object.entries(profiles)){
+        const seed=DISTRICT87_DISCOVERY_DETAILS[number];
+        if(!seed||!profile||typeof profile!=='object')continue;
+        if(!profile.source&&seed.source&&profile.meetingSchedule===seed.meetingSchedule)profile.source=seed.source;
+        if(!profile.officialUrl&&seed.officialUrl)profile.officialUrl=seed.officialUrl;
+      }
+      directorySourcesRepaired.add(profiles);
+    }
+    return profiles;
+  };""")
+replace("  const sourceLabel=official?'Official profile':d?'Division G local':'Not yet enriched';",
+ "  const sourceLabel=official?'Official profile':d?.source?.startsWith('Division G')&&c.division==='G'?'Division G local':d?'Source unverified':'Not yet enriched';")
+
 
 # Create a separate offline storage namespace for the Member view.
 replace("const KEY = 'tm_division_g_dashboard_v56';",
