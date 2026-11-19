@@ -33,6 +33,10 @@ begin
        'name', c->>'name', 'area', c->>'area', 'city', c->>'city', 'mode', c->>'mode',
        'number', c->>'number', 'schedule', c #>> '{publicProfile,meetingSchedule}',
        'island', c->>'island',
+       'meetingMode', c #>> '{publicProfile,meetingMode}',
+       'locationTitle', c #>> '{publicProfile,locationTitle}',
+       'locationAddress', c #>> '{publicProfile,locationAddress}',
+       'publicLocation', c #>> '{publicProfile,publicLocation}',
        'dcpGoals', case when c->>'dcpGoals' ~ '^([0-9]|10)$' then (c->>'dcpGoals')::integer end,
        'shortName', coalesce(c #>> '{publicProfile,calendarBrand,shortName}', c #>> '{publicProfile,calendarShortName}'),
        'fill', c #>> '{publicProfile,calendarBrand,fill}', 'text', c #>> '{publicProfile,calendarBrand,text}',
@@ -95,7 +99,8 @@ begin
          select ltrim(btrim(o->>'clubNumber'), '0') as club_number, o->>'role' as role,
            btrim(o->>'name') as name, roster_position
          from jsonb_array_elements(snapshot->'exco') with ordinality as records(o, roster_position)
-         where o->>'role' in ('Club President', 'Club VP Education', 'Club VP Membership')
+         where o->>'role' in ('Club President', 'Club VP Education', 'Club VP Membership',
+           'Club VP PR', 'Club Secretary', 'Club Treasurer', 'Club Sergeant at Arms')
            and o->'past' is distinct from 'true'::jsonb
            and coalesce(substring(o->>'term' from '.*([0-9]{4}-[0-9]{2}-[0-9]{2})'),
              '9999-12-31') >= (now() at time zone 'Asia/Makassar')::date::text
