@@ -65,3 +65,33 @@ body.hdg-ballot-page{padding:20px;box-sizing:border-box;min-height:100dvh;displa
 body.hdg-ballot-page{margin:0;background:var(--hdg-bg-image),var(--hdg-bg);color:var(--hdg-text);font:16px/1.5 var(--hdg-body-font);font-size-adjust:var(--hdg-size-adjust)}
 .hdg-ballot-card{width:100%;max-width:420px}
 body.hdg-ballot-page{grid-template-columns:minmax(0,420px)}
+
+/* Sign-up screen (Create account): two panels. The sign-in screen is unchanged. */
+.hdg-signup-aside{display:none}
+#hdg-cloud-gate[data-mode=signup] .hdg-auth-card{max-width:920px;padding:0;display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);overflow:hidden}
+#hdg-cloud-gate[data-mode=signup] .hdg-signup-aside{display:flex;flex-direction:column;gap:18px;grid-column:1;grid-row:1 / span 12;padding:36px 32px;background:var(--hdg-aside,rgba(0,0,0,.22));border-right:1px solid var(--hdg-card-edge)}
+#hdg-cloud-gate[data-mode=signup] .hdg-auth-card>:not(.hdg-signup-aside){grid-column:2;margin-left:36px;margin-right:36px;min-width:0}
+#hdg-cloud-gate[data-mode=signup] .hdg-auth-card>small{display:none}
+#hdg-cloud-gate[data-mode=signup] .hdg-auth-card>h1{margin-top:36px}
+#hdg-cloud-gate[data-mode=signup] .hdg-auth-card>.hdg-auth-switch{margin-bottom:30px}
+.hdg-signup-brand{font-weight:800;font-size:12px;letter-spacing:.14em;color:var(--hdg-eyebrow)}
+.hdg-signup-title{font:700 24px/1.25 var(--hdg-head-font);font-size-adjust:none;color:var(--hdg-text)}
+.hdg-signup-steps{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:16px;counter-reset:hdg-step}
+.hdg-signup-steps li{position:relative;display:grid;gap:2px;padding-left:44px;counter-increment:hdg-step;min-height:34px}
+.hdg-signup-steps li::before{content:counter(hdg-step);position:absolute;left:0;top:0;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:700 14px var(--hdg-head-font);font-size-adjust:none;color:var(--hdg-text);background:var(--hdg-input);border:1px solid var(--hdg-input-edge)}
+.hdg-signup-steps b{font-weight:700;color:var(--hdg-text)}
+.hdg-signup-steps span{color:var(--hdg-muted);font-size:14px;line-height:1.4}
+.hdg-signup-note{margin:auto 0 0!important;padding-top:14px;border-top:1px solid var(--hdg-card-edge);font-size:13.5px;color:var(--hdg-muted)}
+#hdg-password-help[data-ok]::before{content:"\25CB  ";}
+#hdg-password-help[data-ok=yes]::before{content:"\2713  ";font-weight:700}
+#hdg-password-help[data-ok=yes]{color:var(--hdg-text)}
+@media(max-width:760px){
+ #hdg-cloud-gate[data-mode=signup] .hdg-auth-card{display:block;max-width:440px}
+ #hdg-cloud-gate[data-mode=signup] .hdg-signup-aside{padding:22px;border-right:0;border-bottom:1px solid var(--hdg-card-edge);gap:12px}
+ #hdg-cloud-gate[data-mode=signup] .hdg-signup-steps{gap:10px}
+ #hdg-cloud-gate[data-mode=signup] .hdg-signup-steps span{display:none}
+ #hdg-cloud-gate[data-mode=signup] .hdg-signup-steps li{min-height:0;align-content:center}
+ #hdg-cloud-gate[data-mode=signup] .hdg-signup-note{display:none}
+ #hdg-cloud-gate[data-mode=signup] .hdg-auth-card>:not(.hdg-signup-aside){margin-left:22px;margin-right:22px}
+ #hdg-cloud-gate[data-mode=signup] .hdg-auth-card>h1{margin-top:22px}
+}
