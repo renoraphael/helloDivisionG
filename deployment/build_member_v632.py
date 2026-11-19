@@ -141,6 +141,26 @@ for script in ('v365-exco-cleanup-startup','v367-membership-name-repair','v504-p
 # Preserve the published club handle and channels while removing historical
 # personal contacts and meeting access details from the Member bundle.
 segment(" /* seed: the club's own published agendas", ' function clubContacts(num)', '')
+replace(" function clubContacts(num){const S=STORE();return S[normalized(num)]||S[num]||null;}",
+ """ function clubContacts(num){
+  const S=STORE(), key=normalized(num);
+  const local=S[key]||S[num];
+  const shared=window.HDG_MEMBER_V632_DATA.clubAgendaDefaults.get(key.replace(/^0+/,''));
+  return shared?{zoomId:shared.zoomId,zoomPass:shared.zoomPass,...local}:local||null;
+ }""")
+replace(" function personContacts(num,name){const c=clubContacts(num);if(!c||!c.people)return null;const k=nk(name);if(!k)return null;if(c.people[k])return c.people[k];",
+ """ function personContacts(num,name){
+  const key=normalized(num), k=nk(name);
+  if(!k)return null;
+  const shared=window.HDG_MEMBER_V632_DATA.clubAgendaDefaults.get(key.replace(/^0+/,''));
+  const stored=shared?.people.get(k);
+  const people=clubContacts(num)?.people||{};
+  if(stored)return {...stored,...people[k]};
+  if(people[k])return people[k];
+  const c={people};""")
+replace('Saved per club and matched to officers by name, so contacts carry over between meetings and terms.',
+ 'Shared defaults carry over to future agendas. Edits here are saved in this browser.')
+
 replace("  const net=(cc.networks&&cc.networks.length?cc.networks:['instagram']).filter(k=>SVG[k]);\n  const social=agendaPrintValue(cc.social||profile.instagram||'');",
  """  const isSurabaya=normalized(record.clubNumber).replace(/^0+/,'')==='692744';
   const defaultChannels=isSurabaya?['instagram','tiktok','youtube']:['instagram'];

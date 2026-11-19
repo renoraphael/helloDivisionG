@@ -1,5 +1,12 @@
 begin;
 
+create table if not exists hdg_community_private.club_agenda_defaults (
+ club_number text primary key check (club_number ~ '^[1-9][0-9]*$'),
+ settings jsonb not null check (jsonb_typeof(settings) = 'object')
+);
+alter table hdg_community_private.club_agenda_defaults enable row level security;
+revoke all on hdg_community_private.club_agenda_defaults from public, anon, authenticated;
+
 create or replace function public.hdg_member_community()
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare snapshot jsonb;
@@ -28,6 +35,23 @@ begin
  return jsonb_build_object(
    'memberName', member_name,
    'updated', synced_at,
+   'clubAgendaDefaults', coalesce((
+     select jsonb_object_agg(a.club_number, jsonb_build_object(
+       'zoomId', a.settings->>'zoomId',
+       'zoomPass', a.settings->>'zoomPass',
+       'people', coalesce((
+         select jsonb_object_agg(name, jsonb_build_object('ig', profile->>'ig', 'email', profile->>'email'))
+         from jsonb_each(case when jsonb_typeof(a.settings->'people') = 'object'
+                              then a.settings->'people' else '{}'::jsonb end) people(name, profile)
+         where jsonb_typeof(profile) = 'object'
+       ), '{}'::jsonb)
+     ))
+     from hdg_community_private.club_agenda_defaults a
+     where exists (
+       select 1 from jsonb_array_elements(snapshot->'clubs') c
+       where ltrim(btrim(c->>'number'), '0') = a.club_number
+     )
+   ), '{}'::jsonb),
    'clubs', coalesce((
      select jsonb_agg(jsonb_build_object(
        'name', c->>'name', 'area', c->>'area', 'city', c->>'city', 'mode', c->>'mode',
