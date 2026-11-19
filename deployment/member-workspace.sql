@@ -71,6 +71,21 @@ begin
      ) schedule
      where day ~ '^\d{4}-\d{2}-\d{2}$' and nullif(title,'') is not null
    ), '[]'::jsonb),
+   'agendaMembers', coalesce((
+     select jsonb_agg(jsonb_build_object('name', name, 'clubNumber', club_number)
+       order by name, club_number)
+     from (
+       select distinct btrim(m->>'name') as name, ltrim(btrim(m->>'clubNumber'), '0') as club_number
+       from jsonb_array_elements(snapshot->'memberships') m
+       where m->>'active' = 'true' and coalesce(m->>'pastMember','false') <> 'true'
+         and nullif(btrim(m->>'name'), '') is not null
+         and ltrim(btrim(m->>'clubNumber'), '0') ~ '^[0-9]+$'
+         and exists (
+           select 1 from jsonb_array_elements(snapshot->'clubs') c
+           where ltrim(btrim(c->>'number'), '0') = ltrim(btrim(m->>'clubNumber'), '0')
+         )
+     ) agenda_people
+   ), '[]'::jsonb),
    'clubOfficers', coalesce((
      select jsonb_agg(jsonb_build_object('clubNumber', club_number, 'role', role, 'name', name)
        order by club_number, role)

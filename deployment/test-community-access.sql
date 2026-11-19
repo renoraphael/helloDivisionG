@@ -16,7 +16,11 @@ insert into hdg_community_private.beta_members(user_id) values
 
 update public.hdg_sync_state set payload = jsonb_set(payload,'{database,memberships}',
  (payload #> '{database,memberships}') || '[
-  {"name":"Fixture Member","email":" HDG-TEST-MEMBER@example.invalid ","active":true},
+  {"name":"Fixture Member","email":" HDG-TEST-MEMBER@example.invalid ","clubNumber":"00012345678","memberId":"99112233","active":true},
+  {"name":"Fixture Visiting Member","clubNumber":"12345679","active":true},
+  {"name":"Fixture Past Member","clubNumber":"12345679","pastMember":true,"active":true},
+  {"name":"Fixture Inactive Member","clubNumber":"12345679","active":false},
+  {"name":"Fixture Outside Member","clubNumber":"99912345678","active":true},
   {"email":"hdg-test-unknown@example.invalid","active":false,"pastMember":true},
   {"email":"hdg-test-unverified@example.invalid","active":true}
  ]'::jsonb) where division_code='G';
@@ -42,14 +46,20 @@ begin
  c := public.hdg_member_community();
  if c->>'memberName' is distinct from 'Fixture Member' then raise exception 'Member name did not resolve'; end if;
  if jsonb_typeof(c->'clubs') <> 'array' or jsonb_typeof(c->'meetings') <> 'array'
-   or (c - array['clubs','meetings','events','leaders','clubOfficers','updated','memberName']) <> '{}'::jsonb
+   or (c - array['clubs','meetings','events','leaders','clubOfficers','agendaMembers','updated','memberName']) <> '{}'::jsonb
    or exists (select 1 from jsonb_array_elements(c->'clubs') x where (x - array['name','city','area','mode','number','schedule','timezone','inactive','award','island','shortName','fill','text','accent','dcpGoals']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'meetings') x where (x - array['club','date','time','timezone']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'events') x where (x - array['kind','title','date','time','timezone','clubNumber']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'leaders') x where (x - array['name','role','scope']) <> '{}'::jsonb)
+   or jsonb_typeof(c->'agendaMembers') is distinct from 'array'
+   or exists (select 1 from jsonb_array_elements(c->'agendaMembers') x where (x - array['name','clubNumber']) <> '{}'::jsonb)
    or jsonb_typeof(c->'clubOfficers') is distinct from 'array'
    or exists (select 1 from jsonb_array_elements(c->'clubOfficers') x where (x - array['name','role','clubNumber']) <> '{}'::jsonb) then
    raise exception 'Community projection includes unexpected fields';
+ end if;
+ if (select jsonb_agg(x order by x->>'name') from jsonb_array_elements(c->'agendaMembers') x where x->>'name' like 'Fixture %')
+   is distinct from '[{"name":"Fixture Member","clubNumber":"12345678"},{"name":"Fixture Visiting Member","clubNumber":"12345679"}]'::jsonb then
+   raise exception 'Agenda names did not match the active cross-club roster';
  end if;
  if (select x->'dcpGoals' from jsonb_array_elements(c->'clubs') x where x->>'number'='00012345678')
    is distinct from '7'::jsonb
@@ -69,10 +79,10 @@ begin
    raise exception 'Club officers did not match the current Division G roster';
  end if;
  if exists(select 1 from public.hdg_sync_state) then raise exception 'Member could read leadership data'; end if;
- if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html','v632-member-club-officers.html','v632-member-dcp.html')) then
+ if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html','v632-member-club-officers.html','v632-member-dcp.html','v632-member-agenda-roster.html')) then
    raise exception 'Member could read the leadership application';
  end if;
- if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-dcp.html') then
+ if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-agenda-roster.html') then
    raise exception 'Member could not read the original workspace build';
  end if;
  begin
