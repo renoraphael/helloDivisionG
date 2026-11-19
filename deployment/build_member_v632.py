@@ -138,8 +138,37 @@ for script in ('v365-exco-cleanup-startup','v367-membership-name-repair','v504-p
  'v614-projects-workspace','v615-tli2-surabaya','v617-past-exco'):
  remove_script(script)
 
-# Preserve STC template code. Remove the data initializers for the historical contacts.
+# Preserve the published club handle and channels while removing historical
+# personal contacts and meeting access details from the Member bundle.
 segment(" /* seed: the club's own published agendas", ' function clubContacts(num)', '')
+replace("  const net=(cc.networks&&cc.networks.length?cc.networks:['instagram']).filter(k=>SVG[k]);\n  const social=agendaPrintValue(cc.social||profile.instagram||'');",
+ """  const isSurabaya=normalized(record.clubNumber).replace(/^0+/,'')==='692744';
+  const defaultChannels=isSurabaya?['instagram','tiktok','youtube']:['instagram'];
+  const net=(cc.networks&&cc.networks.length?cc.networks:defaultChannels).filter(k=>SVG[k]);
+  const defaultSocial=isSurabaya?'@surabaya_toastmasters':'';
+  const social=agendaPrintValue(cc.social||profile.instagram||defaultSocial);""")
+segment('function agendaCurrentOfficers(clubNumber){', 'function agendaNextMeetingDateForClub',
+ """function agendaCurrentOfficers(clubNumber){
+  const rows=window.HDG_MEMBER_V632_DATA.clubOfficers.get(String(clubNumber||'').trim().replace(/^0+/,''));
+  const name=role=>rows?.get('Club '+role)?.name||'';
+  return {president:name('President'),vpEducation:name('VP Education'),vpMembership:name('VP Membership'),
+    saa:name('Sergeant at Arms'),secretary:name('Secretary'),vpPr:name('VP PR'),treasurer:name('Treasurer')};
+}
+""")
+replace("    venue:p.locationTitle||p.publicLocation||[club.city,club.island].filter(Boolean).join(' · '),",
+ "    venue:p.publicLocation||p.locationTitle||[club.city,club.island].filter(Boolean).join(' · '),")
+segment("function agendaRefreshRecordClubData(record,club){", "function agendaCreateDraftForClub(club){",
+ source[source.index("function agendaRefreshRecordClubData(record,club){"):source.index("function agendaCreateDraftForClub(club){")].replace(
+  "  record.venue=record.venue||defaults.venue;",
+  "  const formerVenueDefault=[club.city,club.island].filter(Boolean).join(' · ');\n  if(!record.venue||record.venue===formerVenueDefault)record.venue=defaults.venue;"))
+replace('<div class="field agenda-core-venue"><label>Venue</label><input id="agendaEditVenue"></div>',
+ '<div class="field agenda-core-venue"><label>Venue</label><input id="agendaEditVenue"></div>\n'
+ '<div class="field"><label for="agendaEditMeetingMode">Meeting format</label><select class="app-standard-select" id="agendaEditMeetingMode">'
+ '<option value="">Use club default</option><option>Hybrid</option><option>Online</option><option>In-person</option></select></div>')
+replace("  set('agendaEditVenue',record.venue);",
+ "  set('agendaEditVenue',record.venue);\n  set('agendaEditMeetingMode',record.mode);")
+replace("  record.venue=get('agendaEditVenue');",
+ "  record.venue=get('agendaEditVenue');\n  record.mode=get('agendaEditMeetingMode');")
 # The join slide renderer still exists and can use club contacts entered by the member.
 source=re.sub(r"contacts:\[\{name:'Sindhu',phone:.*?\}\]",'contacts:[]',source,count=1)
 

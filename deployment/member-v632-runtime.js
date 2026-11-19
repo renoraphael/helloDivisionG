@@ -19,7 +19,10 @@
    publicProfile:{
     meetingSchedule:safeText(club.schedule),
     timezone:safeText(club.timezone,64),
-    meetingMode:safeText(club.mode,50),
+    meetingMode:safeText(club.meetingMode,50)||safeText(club.mode,50),
+    locationTitle:safeText(club.locationTitle,160),
+    locationAddress:safeText(club.locationAddress,220),
+    publicLocation:safeText(club.publicLocation,300),
     inactive:club.inactive===true||club.inactive==='true'||club.mode==='Inactive',
     calendarBrand:club.fill?{
      fill:safeText(club.fill,7),text:safeText(club.text,7),accent:safeText(club.accent,7),
@@ -41,7 +44,7 @@
  for(const row of data.clubOfficers||[]){
   const number=safeText(row.clubNumber,24).trim().replace(/^0+/,'');
   const name=safeText(row.name,120).trim();
-  if(!name||!byNumber.has(number)||!['Club President','Club VP Education','Club VP Membership'].includes(row.role))continue;
+  if(!name||!byNumber.has(number)||!['Club President','Club VP Education','Club VP Membership','Club VP PR','Club Secretary','Club Treasurer','Club Sergeant at Arms'].includes(row.role))continue;
   if(!clubOfficers.has(number))clubOfficers.set(number,new Map());
   clubOfficers.get(number).set(row.role,{name});
  }
