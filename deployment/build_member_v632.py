@@ -84,6 +84,28 @@ segment('        <div class="member-community-nav-head">','        <button type=
 # authorised Community projection instead of that redacted literal.
 source,director_calls=re.subn(r"(leadershipDirectorCard\('division','G','DIVISION G DIRECTOR',)'[^']*'(,'District 87 · Region 9'\))",r"\1(db.settings?.divisionDirector||'Division Director')\2",source)
 assert director_calls==2
+# Reuse the v632 Agenda lookup and datalist with a read-only names projection.
+# Keep the operational membership roster out of the Member workspace.
+for start,end,expected in (
+ ('function resolveMemberIdentity(input,preferredClubNumber=', 'function agendaCleanInformalName', 1),
+ ('function agendaIdentityMemberships(hit,opts=', 'function agendaLinkMeetingIdentities', 3),
+ ('function agendaRefreshMemberDatalist(clubNumber)', 'function agendaRecordsForClub', 1),
+ ('window.agendaRefreshMemberDatalist=function(clubNumber)', 'function normalizeAgendaPathwayRowsV309', 1),
+):
+ before=source.index(start)
+ after=source.index(end,before+len(start))
+ code=source[before:after]
+ if start.startswith('function resolveMemberIdentity'):
+  first=code.index("  if(tokens.includes('suzie'))")
+  last=code.index('  // Conservative short-name inference:',first)
+  code=code[:first]+code[last:]
+  first=code.index('  // Fallback to the central alias registry')
+  code=code[:first]+'  return null;\n}\n'
+ if start.startswith('function agendaIdentityMemberships'):
+  code=code.replace('m.key===opts.memberKey','memberKey(m)===opts.memberKey')
+  code=code.replace('m.key===exact.key','memberKey(m)===memberKey(exact)')
+ assert code.count('(db.memberRecords||[])')==expected,start
+ source=source[:before]+code.replace('(db.memberRecords||[])','window.HDG_MEMBER_V632_DATA.agendaMembers')+source[after:]
 replace('<div><strong>${rec.goals}/10</strong><span>DCP</span></div>',
  '<div><strong>${c.dcpGoals==null?\"—\":rec.goals+\"/10\"}</strong><span>DCP</span></div>')
 replace("function councilOfficer(c,role){return (db.officerRecords||[]).find(o=>normalized(o.clubNumber)===normalized(c.number)&&o.role===role&&!officerIsPast(o))}",

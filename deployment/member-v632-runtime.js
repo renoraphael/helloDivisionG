@@ -31,6 +31,12 @@
   if(number)byNumber.set(number.replace(/^0+/,''),info);
   return info;
  });
+ const agendaMembers=[];
+ for(const row of data.agendaMembers||[]){
+  const club=byNumber.get(safeText(row.clubNumber,24).trim().replace(/^0+/,''));
+  const name=safeText(row.name,160).trim();
+  if(club&&name)agendaMembers.push({name,clubNumber:club.number,clubName:club.name,active:true});
+ }
  const clubOfficers=new Map();
  for(const row of data.clubOfficers||[]){
   const number=safeText(row.clubNumber,24).trim().replace(/^0+/,'');
@@ -60,7 +66,7 @@
    if(club)specialMeetings.push({...item,clubNumber:club.number,clubName:club.name});
   }
  }
- global.HDG_MEMBER_V632_DATA={clubs,clubOfficers,areas,tlis,contests,specialMeetings,updated:safeText(data.updated,64),
+ global.HDG_MEMBER_V632_DATA={clubs,agendaMembers,clubOfficers,areas,tlis,contests,specialMeetings,updated:safeText(data.updated,64),
   director:safeText(director?.name,120),memberName:safeText(data.memberName,120).trim()||'Member'};
  global.HDG_MEMBER_V632_ACCOUNT=/^[0-9a-f-]{36}$/i.test(input.account||'')?input.account:'preview';
  global.addEventListener('DOMContentLoaded',()=>{
