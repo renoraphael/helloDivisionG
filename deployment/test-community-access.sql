@@ -38,10 +38,10 @@ begin
    raise exception 'Community projection includes unexpected fields';
  end if;
  if exists(select 1 from public.hdg_sync_state) then raise exception 'Member could read leadership data'; end if;
- if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html')) then
+ if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html')) then
    raise exception 'Member could read the leadership application';
  end if;
- if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-directory.html') then
+ if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-leadership.html') then
    raise exception 'Member could not read the original workspace build';
  end if;
  begin
