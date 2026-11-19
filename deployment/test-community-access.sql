@@ -21,6 +21,18 @@ update public.hdg_sync_state set payload = jsonb_set(payload,'{database,membersh
   {"email":"hdg-test-unverified@example.invalid","active":true}
  ]'::jsonb) where division_code='G';
 
+update public.hdg_sync_state set payload = jsonb_set(jsonb_set(payload,'{database,clubs}',
+ (payload #> '{database,clubs}') || '[{"number":"00012345678","name":"Fixture Club"}]'::jsonb),
+ '{database,exco}', coalesce(payload #> '{database,exco}', '[]'::jsonb) || '[
+  {"clubNumber":"12345678","role":"Club President","name":"Former Fixture","past":true},
+  {"clubNumber":"00012345678","role":"Club President","name":"Fixture President","contact":"private@example.invalid"},
+  {"clubNumber":"12345678","role":"Club VP Education","name":"Expired Fixture","term":"2000-07-01 – 2001-06-30"},
+  {"clubNumber":"12345678","role":"Club VP Education","name":"Fixture Education","term":"2000-07-01 – 9999-06-30"},
+  {"clubNumber":"12345678","role":"Club VP Membership","name":"Fixture Membership"},
+  {"clubNumber":"12345678","role":"Club Secretary","name":"Other Officer"},
+  {"clubNumber":"12345678901","role":"Club President","name":"Outside Division"}
+ ]'::jsonb) where division_code='G';
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000006322',true);
 do $$
@@ -30,18 +42,29 @@ begin
  c := public.hdg_member_community();
  if c->>'memberName' is distinct from 'Fixture Member' then raise exception 'Member name did not resolve'; end if;
  if jsonb_typeof(c->'clubs') <> 'array' or jsonb_typeof(c->'meetings') <> 'array'
-   or (c - array['clubs','meetings','events','leaders','updated','memberName']) <> '{}'::jsonb
+   or (c - array['clubs','meetings','events','leaders','clubOfficers','updated','memberName']) <> '{}'::jsonb
    or exists (select 1 from jsonb_array_elements(c->'clubs') x where (x - array['name','city','area','mode','number','schedule','timezone','inactive','award','island','shortName','fill','text','accent']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'meetings') x where (x - array['club','date','time','timezone']) <> '{}'::jsonb)
    or exists (select 1 from jsonb_array_elements(c->'events') x where (x - array['kind','title','date','time','timezone','clubNumber']) <> '{}'::jsonb)
-   or exists (select 1 from jsonb_array_elements(c->'leaders') x where (x - array['name','role','scope']) <> '{}'::jsonb) then
+   or exists (select 1 from jsonb_array_elements(c->'leaders') x where (x - array['name','role','scope']) <> '{}'::jsonb)
+   or jsonb_typeof(c->'clubOfficers') is distinct from 'array'
+   or exists (select 1 from jsonb_array_elements(c->'clubOfficers') x where (x - array['name','role','clubNumber']) <> '{}'::jsonb) then
    raise exception 'Community projection includes unexpected fields';
  end if;
+ if (select jsonb_agg(x order by x->>'role') from jsonb_array_elements(c->'clubOfficers') x where x->>'clubNumber'='12345678')
+   is distinct from '[
+    {"clubNumber":"12345678","role":"Club President","name":"Fixture President"},
+    {"clubNumber":"12345678","role":"Club VP Education","name":"Fixture Education"},
+    {"clubNumber":"12345678","role":"Club VP Membership","name":"Fixture Membership"}
+   ]'::jsonb
+   or exists (select 1 from jsonb_array_elements(c->'clubOfficers') x where x->>'clubNumber'='12345678901') then
+   raise exception 'Club officers did not match the current Division G roster';
+ end if;
  if exists(select 1 from public.hdg_sync_state) then raise exception 'Member could read leadership data'; end if;
- if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html')) then
+ if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html','v632-member-club-officers.html')) then
    raise exception 'Member could read the leadership application';
  end if;
- if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-leadership.html') then
+ if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-club-officers.html') then
    raise exception 'Member could not read the original workspace build';
  end if;
  begin
@@ -117,6 +140,18 @@ begin
 end $$;
 
 reset role;
+update public.hdg_sync_state set payload = jsonb_set(jsonb_set(payload,'{database,clubs}',
+ (payload #> '{database,clubs}') || '[{"number":"00012345678","name":"Fixture Club"}]'::jsonb),
+ '{database,exco}', coalesce(payload #> '{database,exco}', '[]'::jsonb) || '[
+  {"clubNumber":"12345678","role":"Club President","name":"Former Fixture","past":true},
+  {"clubNumber":"00012345678","role":"Club President","name":"Fixture President","contact":"private@example.invalid"},
+  {"clubNumber":"12345678","role":"Club VP Education","name":"Expired Fixture","term":"2000-07-01 – 2001-06-30"},
+  {"clubNumber":"12345678","role":"Club VP Education","name":"Fixture Education","term":"2000-07-01 – 9999-06-30"},
+  {"clubNumber":"12345678","role":"Club VP Membership","name":"Fixture Membership"},
+  {"clubNumber":"12345678","role":"Club Secretary","name":"Other Officer"},
+  {"clubNumber":"12345678901","role":"Club President","name":"Outside Division"}
+ ]'::jsonb) where division_code='G';
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000006321',true);
 do $$
