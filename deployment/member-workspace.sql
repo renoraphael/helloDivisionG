@@ -33,6 +33,7 @@ begin
        'name', c->>'name', 'area', c->>'area', 'city', c->>'city', 'mode', c->>'mode',
        'number', c->>'number', 'schedule', c #>> '{publicProfile,meetingSchedule}',
        'island', c->>'island',
+       'dcpGoals', case when c->>'dcpGoals' ~ '^([0-9]|10)$' then (c->>'dcpGoals')::integer end,
        'shortName', coalesce(c #>> '{publicProfile,calendarBrand,shortName}', c #>> '{publicProfile,calendarShortName}'),
        'fill', c #>> '{publicProfile,calendarBrand,fill}', 'text', c #>> '{publicProfile,calendarBrand,text}',
        'accent', c #>> '{publicProfile,calendarBrand,accent}',

@@ -14,6 +14,7 @@
    city:safeText(club.city,100),
    island:safeText(club.island,100),
    mode:safeText(club.mode,50),
+   dcpGoals:Number.isInteger(club.dcpGoals)&&club.dcpGoals>=0&&club.dcpGoals<=10?club.dcpGoals:null,
    officialAward:safeText(club.award,64),
    publicProfile:{
     meetingSchedule:safeText(club.schedule),
