@@ -84,6 +84,8 @@ segment('        <div class="member-community-nav-head">','        <button type=
 # authorised Community projection instead of that redacted literal.
 source,director_calls=re.subn(r"(leadershipDirectorCard\('division','G','DIVISION G DIRECTOR',)'[^']*'(,'District 87 · Region 9'\))",r"\1(db.settings?.divisionDirector||'Division Director')\2",source)
 assert director_calls==2
+replace('<div><strong>${rec.goals}/10</strong><span>DCP</span></div>',
+ '<div><strong>${c.dcpGoals==null?\"—\":rec.goals+\"/10\"}</strong><span>DCP</span></div>')
 replace("function councilOfficer(c,role){return (db.officerRecords||[]).find(o=>normalized(o.clubNumber)===normalized(c.number)&&o.role===role&&!officerIsPast(o))}",
  "function councilOfficer(c,role){return window.HDG_MEMBER_V632_DATA.clubOfficers.get(String(c.number||'').trim().replace(/^0+/,''))?.get(role);}")
 replace('<span class="leadership-elected-note">Elected position · cannot dismiss</span>','')
