@@ -1,0 +1,21 @@
+{
+  "version": "v514",
+  "sourceSha256": "48e76fdb7f314d51f5aa9c64a28cc6eb4cb2a9cc3b90f6e83634874ce9092855",
+  "privateBuildSha256": "b2ee7a81583100b81e3e2f8358dfce987f9f8150e8e419393e890cf61cf9afcf",
+  "privateObject": "hdg-private-app/v514.html",
+  "priorPrivateObject": "hdg-private-app/v487.html",
+  "manualDatabaseImportPerformed": false,
+  "includedAutomaticMigrations": [
+    "v504 adds poster-history meetings or fills only empty fields, keyed by record id.",
+    "v509 conditionally corrects the legacy BTC address."
+  ],
+  "sourcePreservationCheck": "Exact source preserved outside three connection hooks and injected adapter/styles/release marker.",
+  "validation": {
+    "scriptSyntax": "104 inline scripts parse.",
+    "syntheticBrowserChecks": "26/26 passed, including 84 layout/palette SVG combinations, cloud saves, education parser, meeting-order memory and transparent/opaque image import.",
+    "browserConsole": "No warnings or errors.",
+    "realOfficerLogin": "Owner-assisted verification pending.",
+    "iPhoneBuild": "Not performed; website release only.",
+    "storageAccess": "PASS: private bucket; v514 present; approved download allowed; anonymous/unapproved/revoked denied; test identities rolled back."
+  }
+}
