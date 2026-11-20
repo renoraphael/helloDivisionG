@@ -154,3 +154,8 @@ The Member Poster Generator opens without a selected club or meeting. Resume las
 - Builds (source v643): leader `v645-community.html` e9be9b2f906811b73c7e6e80f8e282f4aac36381a576bfa1681eb9c52dd29fbd / `.gz` deccfdbaa8b4991182da1335f7c24e6e2cc95c74c96124727256e440d730da96; member `v645-member.html` 03c7161b8a6eb7b736838c8008c3fa8fed91d95683452a82205c006ba210168d / `.gz` bbe457f7ce83e788a93bcf8f5519342a161cd993387d2ff011e437cf50b566d4. Policies in `deployment/storage-policy-v645.sql`.
 - Also: a Member login for Muze (Emus Saripudin, Magical-Bali) was created; credentials only in git-ignored local-data/member-logins.txt.
 - Not run: tables on Members, Area, Contests and Database pages were not individually checked as cards.
+
+## Agreed District 87 plan written down (20 November 2026) - branch feat/phase0-foundation
+- Request: write every rule agreed with the owner where all assistants will find it, so no agent works against them.
+- Added project/DISTRICT_PLAN.md (binding rules, roles table, phases, roadmap). Pointers added to AGENTS.md, CLAUDE.md, START_HERE.md, project/AI_START_PROMPT.md, and a new GEMINI.md (read by Gemini/Antigravity). Documentation only; no app, launcher or database changes.
+- Phase 0 status: started. A $0 test Supabase project was quoted for the owner's organisation but its creation is waiting on the owner's approval in the tool permission prompt. Production structure was read (read-only) to copy into the test project. Existing data safety net: hdg_sync_private.revision_history keeps every previous shared payload.
