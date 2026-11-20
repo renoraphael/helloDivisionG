@@ -141,6 +141,11 @@ for script in ('v365-exco-cleanup-startup','v367-membership-name-repair','v504-p
 # The Member parser starts with no selection. Clearing the input also clears
 # the selected club and meeting, while the saved agenda stays in its store.
 remove_script('v478-remember-active-meeting')
+# A Poster meeting enters Agenda only through the explicit Open in Agenda action.
+replace("      if(panel==='agenda')setTimeout(adoptContextInAgenda,0);\n", '')
+replace("    try{showCommunityPanel('agenda');}catch(_){}\n    const btn=document.querySelector('.community-tabs",
+ "    try{showCommunityPanel('agenda');adoptContextInAgenda();}catch(_){}\n    const btn=document.querySelector('.community-tabs")
+
 segment('  function resetAgendaWorkspaceFromImport(removeImportedRecord=true){',
  "  document.addEventListener('DOMContentLoaded',bindEmptyRosterReset);",
  """  function resetAgendaWorkspaceFromImport(){
