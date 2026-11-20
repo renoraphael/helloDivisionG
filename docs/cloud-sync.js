@@ -233,7 +233,7 @@ function showAuthMode(create){
 }
 async function showMemberCommunity(data){
  const m=el('hdg-auth-message');if(m)m.textContent='Opening Hello Division G…';
- const html=await fetchAppHtml('v643-member.html',appProgress('Opening Hello Division G…'));
+ const html=await fetchAppHtml('v644-member.html',appProgress('Opening Hello Division G…'));
  const marker='/* HDG_MEMBER_V632_CONTEXT */';
  if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)){
   throw new Error('The stored file is not an original v632 Member build.');
@@ -360,8 +360,8 @@ async function connect(){
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
   el('hdg-auth-message').textContent='Opening Hello Division G…';
-  const html=await fetchAppHtml('v643-community.html',appProgress('Opening Hello Division G…'));
-  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v643-community";'))throw new Error('The protected app file is not a connected v643 build.');
+  const html=await fetchAppHtml('v644-community.html',appProgress('Opening Hello Division G…'));
+  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v644-community";'))throw new Error('The protected app file is not a connected v644 build.');
   global.HDG_ENTRY_LOADER=false;
   document.open();document.write(html);document.close();
   return;
