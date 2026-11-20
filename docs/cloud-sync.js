@@ -146,7 +146,7 @@ function showAuthMode(create){
  el('hdg-auth-message').textContent='';
 }
 async function showMemberCommunity(data){
- const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v632-member-toolbar.html',{
+ const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v632-member-toolbar-visible.html',{
   headers:{apikey:CONFIG.key,Authorization:'Bearer '+session.access_token},cache:'no-store'
  });
  if(!response.ok)throw new Error('The original Member workspace could not be loaded. Please refresh and try again.');

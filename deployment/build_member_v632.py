@@ -132,12 +132,22 @@ body.role-member .toolbar-shell #v622ThemeBtn{
   flex-shrink:0;
   border:1px solid rgba(245,245,245,.65)!important;
 }
-body.role-member .toolbar-shell #v622ThemeBtn svg{width:30px;height:30px}
-@media(max-width:760px){
-  body.role-member .toolbar-shell{flex-wrap:wrap;overflow:visible}
-  body.role-member .toolbar-shell #userSwitcher{flex:1 1 min-content;min-width:0}
-  body.role-member .toolbar-shell .user-switcher-copy{min-width:0}
-  body.role-member .toolbar-shell #userDisplayName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.role-member .toolbar-shell #v622ThemeBtn svg{width:30px!important;height:30px!important;flex:none}
+@media screen and (max-width:760px){
+  body.role-member .app-header .toolbar-shell #hdgMemberSignOut,
+  body.role-member .app-header .toolbar-shell #v622ThemeBtn{
+    position:fixed!important;
+    top:12px;
+    z-index:150;
+    min-height:46px;
+    color:#fff!important;
+    background:#004165!important;
+    border:1px solid rgba(245,245,245,.65)!important;
+  }
+  html.theme-maroon body.role-member .app-header .toolbar-shell #hdgMemberSignOut,
+  html.theme-maroon body.role-member .app-header .toolbar-shell #v622ThemeBtn{background:#772432!important}
+  body.role-member .app-header .toolbar-shell #v622ThemeBtn{right:12px}
+  body.role-member .app-header .toolbar-shell #hdgMemberSignOut{right:66px}
 }""")
 replace("ORDER=['classic','ti','maroon'];","ORDER=['ti','maroon'];")
 replace("b.setAttribute('aria-pressed',t==='classic'?'false':'true')","b.setAttribute('aria-pressed',String(t==='maroon'))")
