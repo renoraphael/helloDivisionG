@@ -14,7 +14,11 @@ root=Path(__file__).resolve().parents[1]
 if args.output.resolve().is_relative_to((root/'docs').resolve()) or args.source.resolve()==args.output.resolve():
  parser.error('Build into a new private path.')
 original=args.source.read_bytes()
-assert sha256(original).hexdigest()=="f25b7f5edd31d9b77c3b244dcb1016f67c88be482d54d7ef222bfdad1e096aa9"
+# v632 is the original; v633 adds the rebuilt Division Map; v634 adds the elective-level / misspelt-title parser fix.
+assert sha256(original).hexdigest() in (
+ "f25b7f5edd31d9b77c3b244dcb1016f67c88be482d54d7ef222bfdad1e096aa9",
+ "38c29a459e7ed676eb0afcde1ec43d87435a2585c465b1d7c5733c4fef6398f5",
+ "b79fb8fae85f81edde772b5adb2318fe683e0c35e237e2dc77bd1ca0a979c9bd")
 source=original.decode()
 known_rows=[]
 for key in ('memberRecords','officerRecords'):

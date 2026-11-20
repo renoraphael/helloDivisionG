@@ -85,3 +85,11 @@ The Member toolbar exposes Sign out for the current browser session and enlarges
 Sign out and the theme button stay at the upper right on narrow screens.
 
 The Member Poster Generator opens without a selected club or meeting. Resume last poster restores the previous browser draft on request. Agenda suggests active roster nicknames from Supabase.
+
+## v634 release (Division Map rebuild + elective parser)
+- Task: ship offline v634 to the website. v633 rebuilt the Division Map (pins and silhouette share one fixed-ratio stage, pins from real latitude/longitude, click a pin for its clubs, clubs-by-location list). v634 adds the Agenda parser fix: "L3/Elective Project <name>" is now code L3E with the project name, kept as L3E on save, and "Tittle:/Titel:/Tilte:" are accepted as the speech title. The Area Director island map is unchanged.
+- Private builds (not in Git): `v634-member.html` SHA-256 b0934755b7a5659705ffb85878a4cff6f2cd6158f182c222a66fc9f6bd72b9d2 and `v634-community.html` SHA-256 50dabfbc4a323205dfc9f75ddc92a1a29ec9d7d3cabaab899a9a4cabc535eb73, built from offline v634 (SHA-256 b79fb8fae85f81edde772b5adb2318fe683e0c35e237e2dc77bd1ca0a979c9bd). Compared with fresh v632 builds from the same builders, the only differences are the map code, the parser fix, the release label and one style block.
+- Builders: `build_member_v632.py` accepts the v633 and v634 source hashes; `build_connected_app.py` accepts v633/v634 versions and escapes the closing script tag inside the adapter's Member loader string (same string value).
+- Storage: uploaded the two files to hdg-private-app under new names; v632 files untouched for rollback. Added `deployment/storage-policy-v634-member.sql` (member) and `deployment/storage-policy-v634-community.sql` (leader), both applied. Downloaded copies match the local hashes; anonymous requests are refused.
+- Launcher: docs/cloud-sync.js now loads v634-member.html (members) and v634-community.html (leaders; release marker v634-community). Rollback: revert this PR; the old v632 objects and their policies are still in place.
+- Checks run: member build opened in a browser with synthetic club data (map pins, parser output); leader build loads to the sign-in gate and reports release v634-community. Not run: a real member or leader sign-in on the live site.
