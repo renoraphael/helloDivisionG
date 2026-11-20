@@ -39,7 +39,7 @@ update public.hdg_sync_state set payload = jsonb_set(jsonb_set(payload,'{databas
  ]'::jsonb) where division_code='G';
 
 insert into hdg_community_private.club_agenda_defaults(club_number, settings)
-values ('12345678', '{"zoomId":"fixture-id","zoomPass":"fixture-pass","other":"omit","people":{"fixture president":{"ig":"@fixture","email":"fixture@example.invalid","other":"omit"}}}');
+values ('12345678', '{"zoomId":"fixture-id","zoomPass":"fixture-pass","other":"omit","people":{"fixture president":{"ig":"@fixture","excoRole":"Club President","other":"omit"}}}');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000006322',true);
@@ -50,7 +50,7 @@ begin
  c := public.hdg_member_community();
  if c->>'memberName' is distinct from 'Fixture Member' then raise exception 'Member name did not resolve'; end if;
  if c #> '{clubAgendaDefaults,12345678}' is distinct from
-   '{"zoomId":"fixture-id","zoomPass":"fixture-pass","people":{"fixture president":{"ig":"@fixture","email":"fixture@example.invalid"}}}'::jsonb then
+   '{"zoomId":"fixture-id","zoomPass":"fixture-pass","people":{"fixture president":{"ig":"@fixture","email":"private@example.invalid"}}}'::jsonb then
    raise exception 'Signed-in member cannot read the club sidebar defaults';
  end if;
  begin
@@ -98,10 +98,10 @@ begin
    raise exception 'Club officers did not match the current Division G roster';
  end if;
  if exists(select 1 from public.hdg_sync_state) then raise exception 'Member could read leadership data'; end if;
- if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html','v632-member-club-officers.html','v632-member-dcp.html','v632-member-agenda-roster.html','v632-member-agenda-sidebar.html','v632-member-agenda-attendance.html','v632-member-agenda-attendance-theme.html','v632-member-agenda-defaults.html')) then
+ if exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name not in ('v632-member.html','v632-member-profile.html','v632-member-directory.html','v632-member-leadership.html','v632-member-club-officers.html','v632-member-dcp.html','v632-member-agenda-roster.html','v632-member-agenda-sidebar.html','v632-member-agenda-attendance.html','v632-member-agenda-attendance-theme.html','v632-member-agenda-defaults.html','v632-member-club-attendance.html')) then
    raise exception 'Member could read the leadership application';
  end if;
- if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-agenda-defaults.html') then
+ if not exists(select 1 from storage.objects where bucket_id='hdg-private-app' and name='v632-member-club-attendance.html') then
    raise exception 'Member could not read the original workspace build';
  end if;
  begin
