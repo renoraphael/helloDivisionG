@@ -87,14 +87,25 @@
   if(!switcher)return;
   const signout=document.createElement('button');
   signout.type='button';
+  signout.id='hdgMemberSignOut';
   signout.className='btn ghost';
   signout.textContent='Sign out';
   signout.onclick=()=>{
+   signout.disabled=true;
+   if(global.HDGCloud?.signOutMember){
+    global.HDGCloud.signOutMember();
+    return;
+   }
    window.sessionStorage.removeItem('hdg.cloud.session.v1');
    location.replace(location.pathname);
   };
   const summary=switcher.querySelector('summary');
-  if(summary){summary.setAttribute('aria-disabled','true');summary.onclick=event=>event.preventDefault();}
+  if(summary){
+   summary.setAttribute('aria-disabled','true');
+   summary.tabIndex=-1;
+   summary.removeAttribute('title');
+   summary.onclick=event=>event.preventDefault();
+  }
   switcher.after(signout);
  });
 })(window);

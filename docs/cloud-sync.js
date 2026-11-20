@@ -81,6 +81,20 @@ async function request(path,body,authenticated=true,retry=true,method){
  if(!response.ok)throw Object.assign(new Error(result.msg||result.message||result.error_description||result.error||'Request failed'),{status:response.status,code:result.code});
  return result;
 }
+cloud.signOutMember=async()=>{
+ let timer;
+ try{
+  await Promise.race([
+   request('/auth/v1/logout?scope=local',{}),
+   new Promise(resolve=>{timer=setTimeout(resolve,2500);})
+  ]);
+ }catch(_){}
+ finally{
+  clearTimeout(timer);
+  setSession(null);
+  location.replace(location.pathname);
+ }
+};
 async function refresh(){
  if(!refreshing)refreshing=(async()=>{if(!session?.refresh_token)throw Object.assign(new Error('Please sign in again.'),{status:401});const next=await request('/auth/v1/token?grant_type=refresh_token',{refresh_token:session.refresh_token},false);setSession(next);})().finally(()=>refreshing=null);
  return refreshing;
@@ -132,7 +146,7 @@ function showAuthMode(create){
  el('hdg-auth-message').textContent='';
 }
 async function showMemberCommunity(data){
- const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v632-member-parser-reset.html',{
+ const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v632-member-toolbar.html',{
   headers:{apikey:CONFIG.key,Authorization:'Bearer '+session.access_token},cache:'no-store'
  });
  if(!response.ok)throw new Error('The original Member workspace could not be loaded. Please refresh and try again.');
