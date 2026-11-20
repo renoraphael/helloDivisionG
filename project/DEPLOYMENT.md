@@ -36,3 +36,8 @@ For the Member workspace, apply `deployment/member-workspace.sql` after `communi
 ## Original v632 Member build
 
 Build with `python3 deployment/build_member_v632.py /private/path/HelloDivisionG_v632.html private-app/v632-member.html`. The original input is pinned by SHA-256. Upload the separate Member asset to the existing private bucket. Apply `deployment/member-workspace.sql` and `deployment/storage-policy-v632-member.sql`, then run the rollback-scoped access tests before enabling the launcher. Keep the raw v632 HTML and the officer build private, and retain the previous launcher as the rollback target.
+
+
+## Faster opening of the protected app (gzip copy and browser cache)
+The launcher downloads `<name>.html.gz` first (about 42% of the size), unzips it in the browser, shows progress, and keeps the downloaded copy in this browser only until sign-out. A repeat sign-in sends the saved ETag; the copy is reused only when the server answers 304 Not Modified, so access is still checked every time. If the `.gz` object is missing or the browser cannot unzip, it falls back to the plain `.html` object.
+For each release: after building `private-app/vNNN-member.html` and `private-app/vNNN-community.html`, run `gzip -9 -n -c <file> > <file>.gz`, verify it unzips to the identical file, apply `deployment/storage-policy-vNNN-gzip.sql` (one rule per `.gz` object name, same access mode as the plain file), upload both `.gz` files next to the plain ones, then merge the launcher change. The plain files remain the fallback and rollback.
