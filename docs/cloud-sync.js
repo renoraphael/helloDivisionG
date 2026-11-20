@@ -142,9 +142,13 @@ async function showMemberCommunity(data){
   throw new Error('The stored file is not an original v632 Member build.');
  }
  const context=JSON.stringify({account:session.user.id,community:data}).replace(/</g,'\\u003c');
+ // Greeting: show "Hello <name>!" as the page title when this login has a display name (Auth user metadata).
+ const rawName=session.user&&session.user.user_metadata&&session.user.user_metadata.display_name;
+ const name=typeof rawName==='string'?rawName.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,40):'';
+ const greeting=name?'(function(n){var T="Division G Community",G="Hello "+n+"!";function fix(){var t=document.getElementById("pageTitle");if(t&&t.textContent===T)t.textContent=G;}function arm(){var t=document.getElementById("pageTitle");if(!t)return;fix();new MutationObserver(fix).observe(t,{childList:true,characterData:true,subtree:true});}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",arm);else arm();})('+JSON.stringify(name).replace(/</g,'\\u003c')+');':'';
  global.HDG_ENTRY_LOADER=false;
  document.open();
- document.write(html.replace(marker,()=> 'window.HDG_MEMBER_V632_CONTEXT='+context+';'));
+ document.write(html.replace(marker,()=> 'window.HDG_MEMBER_V632_CONTEXT='+context+';'+greeting));
  document.close();
 }
 cloud.openBallot=token=>request('/rest/v1/rpc/hdg_open_ballot',{p_token:token},false);
