@@ -40,9 +40,24 @@ begin
        'zoomId', a.settings->>'zoomId',
        'zoomPass', a.settings->>'zoomPass',
        'people', coalesce((
-         select jsonb_object_agg(name, jsonb_build_object('ig', profile->>'ig', 'email', profile->>'email'))
+         select jsonb_object_agg(name, jsonb_build_object('ig', profile->>'ig',
+           'email', coalesce(exco.email, profile->>'email')))
          from jsonb_each(case when jsonb_typeof(a.settings->'people') = 'object'
                               then a.settings->'people' else '{}'::jsonb end) people(name, profile)
+         left join lateral (
+           select btrim(o->>'contact') as email
+           from jsonb_array_elements(snapshot->'exco') with ordinality as records(o, roster_position)
+           where profile->>'excoRole' = o->>'role'
+             and ltrim(btrim(o->>'clubNumber'), '0') = a.club_number
+             and regexp_replace(lower(o->>'name'), '[^a-z0-9]', '', 'g') =
+                 regexp_replace(lower(people.name), '[^a-z0-9]', '', 'g')
+             and coalesce(o->>'past','false') <> 'true'
+             and coalesce(substring(o->>'term' from '.*([0-9]{4}-[0-9]{2}-[0-9]{2})'),
+               '9999-12-31') >= (now() at time zone 'Asia/Makassar')::date::text
+             and btrim(o->>'contact') ~ '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$'
+           order by roster_position
+           limit 1
+         ) exco on true
          where jsonb_typeof(profile) = 'object'
        ), '{}'::jsonb)
      ))

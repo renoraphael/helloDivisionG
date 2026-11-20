@@ -177,10 +177,22 @@ segment('function agendaCurrentOfficers(clubNumber){', 'function agendaNextMeeti
 """)
 replace("    venue:p.locationTitle||p.publicLocation||[club.city,club.island].filter(Boolean).join(' · '),",
  "    venue:p.publicLocation||p.locationTitle||[club.city,club.island].filter(Boolean).join(' · '),")
+replace("function agendaRefreshRecordClubData(record,club){",
+ """function agendaDefaultAttendance(record,club){
+  if(!club)return '';
+  const series=window.meetingSeriesOfClubV500?.(club).find(item=>item.key===record.meetingSeriesV500);
+  const profile=publicClubProfile(club);
+  const mode=series?.mode||clubRecurringSeries(club).find(item=>item.primary)?.meetingMode||
+    profile.meetingMode||club.mode||'In-person';
+  return {'ONLINE':'Online','HYBRID':'Hybrid','IN PERSON':'In-person'}[calendarModeShort(mode)]||'';
+}
+function agendaRefreshRecordClubData(record,club){""")
 segment("function agendaRefreshRecordClubData(record,club){", "function agendaCreateDraftForClub(club){",
  source[source.index("function agendaRefreshRecordClubData(record,club){"):source.index("function agendaCreateDraftForClub(club){")].replace(
   "  record.venue=record.venue||defaults.venue;",
-  "  const formerVenueDefault=[club.city,club.island].filter(Boolean).join(' · ');\n  if(!record.venue||record.venue===formerVenueDefault)record.venue=defaults.venue;"))
+  "  const formerVenueDefault=[club.city,club.island].filter(Boolean).join(' · ');\n  if(!record.venue||record.venue===formerVenueDefault)record.venue=defaults.venue;").replace(
+  "  record.clubName=club.name;",
+  "  record.clubName=club.name;\n  record.mode=record.attendanceOverride||agendaDefaultAttendance(record,club);"))
 replace('<div class="field agenda-core-venue"><label>Venue</label><input id="agendaEditVenue"></div>',
  '<div class="field agenda-core-venue"><label>Venue</label><input id="agendaEditVenue"></div>\n'
  '<div class="field"><label for="agendaEditMeetingMode">Attendance</label><select class="app-standard-select" id="agendaEditMeetingMode">'
@@ -188,7 +200,7 @@ replace('<div class="field agenda-core-venue"><label>Venue</label><input id="age
 replace("    const [date,template,theme,wod,venue]=fields;", "    const [date,template,theme,wod,venue,attendance]=fields;")
 replace("    secondaryGrid.append(template,venue);", "    secondaryGrid.append(template,venue,attendance);")
 replace("  set('agendaEditVenue',record.venue);",
- "  set('agendaEditVenue',record.venue);\n  set('agendaEditMeetingMode',record.mode);")
+ "  set('agendaEditVenue',record.venue);\n  set('agendaEditMeetingMode',record.attendanceOverride||'');\n  const attendanceDefault=$('agendaEditMeetingMode')?.options[0];\n  if(attendanceDefault){const effective=agendaDefaultAttendance(record,(db.clubs||[]).find(c=>c.number===record.clubNumber));attendanceDefault.textContent=effective?'Club default · '+effective:'Use club default';}")
 # The screen backdrop belongs to the app chrome. The A4 style is club-owned.
 replace('.agenda-a4-stage{display:flex;justify-content:center;overflow:auto;padding:14px;border:1px solid #2C609C;border-radius:13px;background:#062E5D}',
  """ .agenda-a4-stage{display:flex;justify-content:center;overflow:auto;padding:14px;border:1px solid #2C609C;border-radius:13px;background:#062E5D}
@@ -197,7 +209,7 @@ replace('.agenda-a4-stage{display:flex;justify-content:center;overflow:auto;padd
  html.theme-maroon #agendaGeneratedView{background:#772432;border-color:rgba(169,178,177,.48)}
 }""")
 replace("  record.venue=get('agendaEditVenue');",
- "  record.venue=get('agendaEditVenue');\n  if($('agendaEditMeetingMode'))record.mode=get('agendaEditMeetingMode');")
+ "  record.venue=get('agendaEditVenue');\n  if($('agendaEditMeetingMode'))record.attendanceOverride=get('agendaEditMeetingMode');\n  record.mode=record.attendanceOverride||agendaDefaultAttendance(record,club);")
 # The join slide renderer still exists and can use club contacts entered by the member.
 source=re.sub(r"contacts:\[\{name:'Sindhu',phone:.*?\}\]",'contacts:[]',source,count=1)
 
