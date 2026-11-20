@@ -1,0 +1,15 @@
+{
+  "version": "v484",
+  "sourceSha256": "91b1ddadf4632923930034eb8b2d786b029570aae07ac4a1620e9229e8928b95",
+  "privateBuildSha256": "e35f8b43bd8239c34aea6ec052f8d496b767ec8a52ed8610eb54a3da66d28404",
+  "privateObject": "hdg-private-app/v484.html",
+  "priorPrivateObject": "hdg-private-app/v475.html",
+  "databaseImportPerformed": false,
+  "sourcePreservationCheck": "All offline source is unchanged outside the three explicit storage/boot integration replacements and the injected adapter/styles/release marker.",
+  "validation": {
+    "scriptSyntax": "All 85 inline scripts in the final connected build parse successfully.",
+    "syntheticBrowserChecks": "17/17 passed, including 84 valid poster SVG combinations",
+    "databaseImportPerformed": false,
+    "integrationFix": "Initialize the legacy agendaGeneratedRecordId global before a restored meeting can be selected."
+  }
+}
