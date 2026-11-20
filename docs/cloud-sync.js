@@ -64,6 +64,20 @@ const cloud={SyncQueue,shared,signature};
 global.HDGCloud=cloud;
 function el(id){return document.getElementById(id);}
 function setSession(value){if(value&&!value.expires_at)value.expires_at=Math.floor(Date.now()/1000)+(value.expires_in||3600);session=value;if(value)sessionStorage.setItem(sessionKey,JSON.stringify(value));else sessionStorage.removeItem(sessionKey);}
+/* A visible Sign out button in the top toolbar of the Leader app (the Member app has its own). It triggers the same sign-out as the status-bar button. */
+function mountToolbarSignOut(){
+ let tries=0;
+ const place=()=>{
+  if(global.HDG_ENTRY_LOADER||document.getElementById('hdgToolbarSignOut')||document.getElementById('hdgMemberSignOut')||document.body.classList.contains('role-member'))return true;
+  const shell=document.querySelector('.toolbar-shell');if(!shell)return false;
+  const b=document.createElement('button');b.type='button';b.id='hdgToolbarSignOut';b.className='toolbar-icon-btn';b.title='Sign out';b.setAttribute('aria-label','Sign out');
+  b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  b.onclick=()=>{b.disabled=true;const s=el('hdg-signout');if(s)s.click();else{try{sessionStorage.removeItem(sessionKey);}catch(_){}location.reload();}};
+  shell.insertBefore(b,shell.querySelector('#v622ThemeBtn')||shell.querySelector('.toolbar-present')||null);
+  return true;
+ };
+ const timer=setInterval(()=>{if(place()||++tries>80)clearInterval(timer);},500);
+}
 function showStatus(message,kind='ok'){
  const text=el('hdg-cloud-status');if(text)text.textContent=message;
  const box=el('hdg-cloud-bar');if(box)box.dataset.kind=kind;
@@ -113,6 +127,7 @@ function mount(){
  showAuthMode(global.HDG_ENTRY_LOADER&&new URLSearchParams(location.search).get('view')==='signup');
  el('hdg-retry').onclick=async()=>{await queue.flush();await poll();};
  el('hdg-signout').onclick=async()=>{if(queue.snapshot())await preserveConflict();try{await request('/auth/v1/logout',{});}catch(_){}setSession(null);location.reload();};
+ mountToolbarSignOut();
  el('hdg-download-local').onclick=()=>downloadPending();
  el('hdg-use-shared').onclick=async()=>{try{await preserveConflict();const latest=await readState();await apply(latest);queue.reset(latest.revision,canonicalStoragePayload(db));await persistPending(null);el('hdg-conflict').hidden=true;showStatus('Synced · revision '+latest.revision);}catch(error){showStatus(error.message,'offline');}};
  const admin=document.createElement('details');admin.id='hdg-admin';admin.hidden=true;
@@ -282,7 +297,7 @@ async function connect(){
   });
   if(!response.ok)throw new Error('The protected v632 app could not be loaded. Please contact the administrator.');
   const html=await response.text();
-  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v638-community";'))throw new Error('The protected app file is not a connected v638 build.');
+  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v639-community";'))throw new Error('The protected app file is not a connected v639 build.');
   global.HDG_ENTRY_LOADER=false;
   document.open();document.write(html);document.close();
   return;
