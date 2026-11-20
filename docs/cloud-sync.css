@@ -97,3 +97,10 @@ body.hdg-ballot-page{grid-template-columns:minmax(0,420px)}
 }
 /* The sync bar stays out of the way while presenting: it would cover the presentation controls (it sits above everything else). It returns when the presentation closes. */
 body:has(#presentation.active) #hdg-cloud-bar,body:has(#clubPresentationOverlay.active) #hdg-cloud-bar,body:has(.agenda-secret-slide-overlay.active) #hdg-cloud-bar,body:has(.ballot-demo-overlay.active) #hdg-cloud-bar,body:has(.meeting-public-ballot-overlay.active) #hdg-cloud-bar{display:none!important}
+/* Sync status sits in a Settings card; the floating box and the alert pill are only for real problems. */
+body:not(.hdg-sync-placed) #hdg-cloud-bar{display:none!important}
+#hdg-sync-card #hdg-cloud-bar{position:static;bottom:auto;right:auto;max-width:none;z-index:auto;box-shadow:none;margin-top:10px}
+#hdg-sync-card.float #hdg-cloud-bar{position:fixed;bottom:12px;right:12px;max-width:min(600px,calc(100vw - 24px));z-index:2147483645;box-shadow:0 12px 34px rgba(0,0,0,.4)}
+#hdg-sync-alert{position:fixed;z-index:2147483644;bottom:12px;right:12px;padding:9px 16px;border-radius:999px;background:#F2DF74;color:#3B0104;border:1px solid #F2DF74;font:700 13.5px/1.2 inherit;font-family:inherit;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#hdg-sync-alert[hidden]{display:none}
+body:has(#presentation.active) #hdg-sync-alert,body:has(#clubPresentationOverlay.active) #hdg-sync-alert,body:has(.agenda-secret-slide-overlay.active) #hdg-sync-alert,body:has(.ballot-demo-overlay.active) #hdg-sync-alert,body:has(.meeting-public-ballot-overlay.active) #hdg-sync-alert{display:none!important}

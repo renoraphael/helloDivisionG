@@ -116,9 +116,41 @@ function mountToolbarSignOut(){
  };
  const timer=setInterval(()=>{if(place()||++tries>80)clearInterval(timer);},500);
 }
+/* Sync status lives in a Settings card instead of a box that floats over the screen. Only a real problem (unsynced edits waiting,
+   or changes that cannot be saved) shows a small pill that opens it. Roles without a Settings tab get the old floating box in that case. */
+function openSyncSettings(){
+ const card=el('hdg-sync-card');if(!card)return;
+ const link=document.querySelector('.nav-link[data-tab="settings"]');
+ if(link&&link.offsetParent!==null){link.click();setTimeout(()=>card.scrollIntoView({block:'center'}),200);}
+ else card.classList.add('float');
+}
+function updateSyncAlert(){
+ const pill=el('hdg-sync-alert'),bar=el('hdg-cloud-bar'),card=el('hdg-sync-card');if(!pill||!bar)return;
+ const kind=bar.dataset.kind||'ok',urgent=kind==='conflict'||kind==='offline';
+ if(!urgent){pill.dataset.dismissed='';card&&card.classList.remove('float');pill.hidden=true;return;}
+ pill.textContent=kind==='conflict'?'Unsynced edits need attention':'Offline: changes not saved yet';
+ pill.hidden=pill.dataset.dismissed===kind||(card&&card.classList.contains('float'));
+}
+function mountSyncCard(){
+ let tries=0;
+ const place=()=>{
+  if(global.HDG_ENTRY_LOADER||el('hdg-sync-card'))return true;
+  const settings=document.getElementById('settings'),bar=el('hdg-cloud-bar');
+  if(!settings||!bar)return false;
+  const card=document.createElement('div');card.id='hdg-sync-card';card.className='card';
+  card.innerHTML='<h3>Sync &amp; account</h3><p class="small">Shows whether your changes are saved to the shared version, with sign-out and recovery options.</p>';
+  card.appendChild(bar);settings.appendChild(card);
+  const pill=document.createElement('button');pill.type='button';pill.id='hdg-sync-alert';pill.hidden=true;
+  pill.onclick=()=>{pill.dataset.dismissed=(el('hdg-cloud-bar')||{dataset:{}}).dataset.kind||'';pill.hidden=true;openSyncSettings();};
+  document.body.appendChild(pill);document.body.classList.add('hdg-sync-placed');
+  updateSyncAlert();return true;
+ };
+ const timer=setInterval(()=>{if(place()||++tries>80)clearInterval(timer);},500);
+}
 function showStatus(message,kind='ok'){
  const text=el('hdg-cloud-status');if(text)text.textContent=message;
  const box=el('hdg-cloud-bar');if(box)box.dataset.kind=kind;
+ updateSyncAlert();
  if(kind==='conflict'){el('hdg-conflict').hidden=false;}
  if(kind==='auth'){ready=false;document.body.classList.remove('hdg-authorized');el('hdg-cloud-gate').hidden=false;el('hdg-auth-message').textContent=message;}
 }
@@ -166,6 +198,7 @@ function mount(){
  el('hdg-retry').onclick=async()=>{await queue.flush();await poll();};
  el('hdg-signout').onclick=async()=>{if(queue.snapshot())await preserveConflict();try{await request('/auth/v1/logout',{});}catch(_){}setSession(null);location.reload();};
  mountToolbarSignOut();
+ mountSyncCard();
  el('hdg-download-local').onclick=()=>downloadPending();
  el('hdg-use-shared').onclick=async()=>{try{await preserveConflict();const latest=await readState();await apply(latest);queue.reset(latest.revision,canonicalStoragePayload(db));await persistPending(null);el('hdg-conflict').hidden=true;showStatus('Synced · revision '+latest.revision);}catch(error){showStatus(error.message,'offline');}};
  const admin=document.createElement('details');admin.id='hdg-admin';admin.hidden=true;
@@ -200,7 +233,7 @@ function showAuthMode(create){
 }
 async function showMemberCommunity(data){
  const m=el('hdg-auth-message');if(m)m.textContent='Opening Hello Division G…';
- const html=await fetchAppHtml('v638-member.html',appProgress('Opening Hello Division G…'));
+ const html=await fetchAppHtml('v641-member.html',appProgress('Opening Hello Division G…'));
  const marker='/* HDG_MEMBER_V632_CONTEXT */';
  if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)){
   throw new Error('The stored file is not an original v632 Member build.');
@@ -327,8 +360,8 @@ async function connect(){
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
   el('hdg-auth-message').textContent='Opening Hello Division G…';
-  const html=await fetchAppHtml('v640-community.html',appProgress('Opening Hello Division G…'));
-  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v640-community";'))throw new Error('The protected app file is not a connected v640 build.');
+  const html=await fetchAppHtml('v641-community.html',appProgress('Opening Hello Division G…'));
+  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v641-community";'))throw new Error('The protected app file is not a connected v641 build.');
   global.HDG_ENTRY_LOADER=false;
   document.open();document.write(html);document.close();
   return;
