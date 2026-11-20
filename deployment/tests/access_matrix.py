@@ -74,6 +74,13 @@ if s == 200:
 for r in ('member', 'beta', 'outsider', 'inactive_officer', 'past_member'):
     s, body = rpc('hdg_save_web_state', T[r], {'p_expected_revision': 1, 'p_payload': {}, 'p_request_id': str(uuid.uuid4())})
     check(f'{r} cannot save the shared record', s != 200, str(s))
+s, rows = request('GET', '/rest/v1/hdg_sync_state?select=revision,payload', KEY, T['officer'])
+if s == 200 and rows:
+    import time
+    t0 = time.time()
+    s, body = rpc('hdg_save_web_state', T['officer'], {'p_expected_revision': rows[0]['revision'] + 5,
+                  'p_payload': rows[0]['payload'], 'p_request_id': str(uuid.uuid4())})
+    check('a save based on an old revision is refused at once with 409', s == 409 and time.time() - t0 < 10, f'{s} {round(time.time() - t0, 1)}s')
 for schema, table in (('hdg_sync_private', 'revision_history'), ('hdg_community_private', 'votes'), ('hdg_private', 'web_imports')):
     for r in ('admin', 'member', 'signed_out'):
         s, body = request('GET', f'/rest/v1/{table}?select=*', KEY, T[r], headers={'Accept-Profile': schema})
@@ -117,6 +124,151 @@ if s == 200:
     rpc('hdg_manage_ballot', T['officer'], {'p_meeting_id': MEETING, 'p_action': 'close'})
     s, o = rpc('hdg_open_ballot', None, {'p_token': tok})
     check('a closed ballot link no longer opens', o in (None, ''), str(s))
+
+# ---------------------------------------------------------------- 002 foundation: scoped access
+P = cfg['people']
+for r in ('dd_g', 'ad_g1', 'am', 'prm', 'cross', 'member_k', 'chair', 'past_ad'):
+    T[r] = token(r)
+
+
+def seen_people(r):
+    s, rows = request('GET', '/rest/v1/hdg_people?select=id', KEY, T[r])
+    return {x['id'] for x in rows} if isinstance(rows, list) else set()
+
+
+ALPHA = {P[k] for k in ('admin', 'officer', 'member', 'ad_g1', 'cross')}
+BETA = {P[k] for k in ('past_member', 'dd_g', 'prm', 'past_ad')}
+KAPPA = {P[k] for k in ('am', 'member_k', 'chair', 'kappa_no_account')}
+expect_people = {
+    'member': {P['member']},                        # own record only
+    'officer': ALPHA,                               # club officer: own club
+    'ad_g1': ALPHA,                                 # Area Director G1: clubs in G1
+    'dd_g': ALPHA | BETA,                           # Division Director G: all of G, not K
+    'am': ALPHA | BETA | KAPPA,                     # Administration Manager: everyone
+    'prm': {P['prm']},                              # PRM: roll-ups only, so own record only
+    'cross': {P['cross']} | KAPPA,                  # member in G (own record) + Area Director in K1
+    'admin': {P['admin']},                          # maintainer: no silent access; uses the logged function
+    'past_ad': {P['past_ad']},                      # last year's Area Director: term ended
+    'outsider': set(),
+}
+for r, want in expect_people.items():
+    got = seen_people(r)
+    check(f'{r} sees exactly the people in their scope ({len(want)})', got == want, f'got {len(got)}')
+
+s, rows = request('GET', '/rest/v1/hdg_clubs?select=club_number', KEY, T['member_k'])
+check('a member sees every club in the district', isinstance(rows, list) and len(rows) == 3, str(len(rows) if isinstance(rows, list) else s))
+s, rows = request('GET', '/rest/v1/hdg_clubs?select=club_number', KEY, T['outsider'])
+check('an unknown account sees no clubs', rows == [], str(rows)[:80])
+s, rows = request('GET', '/rest/v1/hdg_people?select=*', KEY, None)
+check('signed-out sees no people', s != 200 or rows == [], str(s))
+
+# Maintainer reads through a function that logs every use
+s, rows = rpc('hdg_maintainer_people', T['admin'], {'p_division': 'K'})
+check('maintainer can read Division K people through the logged function', s == 200 and {x['id'] for x in rows} == KAPPA, str(s))
+s, rows = rpc('hdg_maintainer_people', T['am'], {'p_division': 'K'})
+check('non-maintainer cannot use the maintainer function', s != 200, str(s))
+
+
+def person(r, pid):
+    s, rows = request('GET', f'/rest/v1/hdg_people?id=eq.{pid}&select=*', KEY, T[r])
+    return rows[0] if isinstance(rows, list) and rows else None
+
+
+# Profiles and manual fields
+me = person('member', P['member'])
+s, ts = rpc('hdg_update_my_profile', T['member'], {'p_person': P['member'], 'p_patch': {'nickname': 'Tester', 'aliases': ['T1', 'T2']}, 'p_expected_updated_at': me['updated_at']})
+check('a member can set their own nickname and aliases', s == 200, str(ts)[:120])
+s, _ = rpc('hdg_update_my_profile', T['member'], {'p_person': P['member'], 'p_patch': {'nickname': 'Again'}, 'p_expected_updated_at': me['updated_at']})
+check('a save based on an old version is refused (no silent overwrite)', s != 200, str(s))
+s, _ = rpc('hdg_update_my_profile', T['member'], {'p_person': P['member'], 'p_patch': {'email': 'x@example.com'}, 'p_expected_updated_at': ts})
+check('a member cannot change TI fields through their profile', s != 200, str(s))
+s, _ = rpc('hdg_update_my_profile', T['member'], {'p_person': P['officer'], 'p_patch': {'nickname': 'X'}, 'p_expected_updated_at': me['updated_at']})
+check("a member cannot edit someone else's profile", s != 200, str(s))
+
+target = person('officer', P['member'])
+s, ts2 = rpc('hdg_update_person', T['officer'], {'p_person': P['member'], 'p_patch': {'name': 'Test Member Corrected'}, 'p_expected_updated_at': target['updated_at']})
+after = person('officer', P['member'])
+check('a club officer can correct a member of their club', s == 200, str(ts2)[:120])
+check('a hand-corrected TI field is recorded for the next import', bool(after and 'name' in after['hand_corrected']), '')
+check('manual nickname survives a leader edit', bool(after and after['nickname'] == 'Tester'), '')
+k = person('am', P['member_k'])
+s, _ = rpc('hdg_update_person', T['ad_g1'], {'p_person': P['member_k'], 'p_patch': {'nickname': 'X'}, 'p_expected_updated_at': k['updated_at']})
+check('an Area Director cannot edit a member in another division', s != 200, str(s))
+s, _ = rpc('hdg_update_person', T['cross'], {'p_person': P['member_k'], 'p_patch': {'nickname': 'Kay'}, 'p_expected_updated_at': k['updated_at']})
+check('a cross-division role holder can edit inside their K1 area', s == 200, str(s))
+
+# Edit history and undo
+s, hist = rpc('hdg_edit_history', T['officer'], {'p_table': 'hdg_people', 'p_key': P['member']})
+check('an officer can see the edit history of their club member', s == 200 and isinstance(hist, list) and len(hist) >= 2, str(s))
+s, hist2 = rpc('hdg_edit_history', T['member_k'], {'p_table': 'hdg_people', 'p_key': P['member']})
+check("a member cannot see another person's edit history", s == 200 and hist2 == [], str(hist2)[:80])
+if isinstance(hist, list) and hist:
+    last = hist[0]
+    s, _ = rpc('hdg_undo_edit', T['officer'], {'p_history_id': last['id']})
+    restored = person('officer', P['member'])
+    check('the officer can undo their own edit', s in (200, 204) and restored['name'] != 'Test Member Corrected', str(s))
+    s, _ = rpc('hdg_undo_edit', T['member_k'], {'p_history_id': last['id'] - 1})
+    check("a member cannot undo someone else's edit", s != 200, str(s))
+
+# Clubs
+alpha = request('GET', '/rest/v1/hdg_clubs?club_number=eq.9000001&select=*', KEY, T['officer'])[1][0]
+s, _ = rpc('hdg_update_club', T['officer'], {'p_club': '9000001', 'p_patch': {'details': {'venue': 'Test Hall'}}, 'p_expected_updated_at': alpha['updated_at']})
+check('a club officer can edit their club details', s == 200, str(s))
+beta = request('GET', '/rest/v1/hdg_clubs?club_number=eq.9000002&select=*', KEY, T['officer'])[1][0]
+s, _ = rpc('hdg_update_club', T['officer'], {'p_club': '9000002', 'p_patch': {'details': {'venue': 'X'}}, 'p_expected_updated_at': beta['updated_at']})
+check('a club officer cannot edit another club', s != 200, str(s))
+s, _ = rpc('hdg_update_club', T['member'], {'p_club': '9000001', 'p_patch': {'details': {'venue': 'X'}}, 'p_expected_updated_at': alpha['updated_at']})
+check('a member cannot edit club details', s != 200, str(s))
+s, _ = rpc('hdg_update_club', T['dd_g'], {'p_club': '9000002', 'p_patch': {'timezone': 'Mars/Base'}, 'p_expected_updated_at': beta['updated_at']})
+check('only supported time zones are accepted', s != 200, str(s))
+s, lab = rpc('hdg_timezone_label', T['member'], {'tz': 'Asia/Kuala_Lumpur'})
+check('Malaysian clubs show MYT', lab == 'MYT', str(lab))
+
+# Roles and terms
+def assign(r, person_key, role, code, year):
+    return rpc('hdg_assign_role', T[r], {'p_person': P[person_key], 'p_role': role, 'p_scope_code': code, 'p_year': year})
+
+s, rid = assign('ad_g1', 'member', 'club_vpe', '9000001', 2026)
+check('an Area Director can give a club role inside their area', s == 200, str(rid)[:120])
+s, _ = assign('ad_g1', 'member_k', 'club_vpe', '9000003', 2026)
+check('an Area Director cannot give a role in another division', s != 200, str(s))
+s, _ = assign('dd_g', 'prm', 'area_director', 'G2', 2026)
+check('a Division Director can give an Area Director role in their division', s == 200, str(s))
+s, _ = assign('dd_g', 'member', 'pqd', '87', 2026)
+check('a Division Director cannot give district roles', s != 200, str(s))
+s, _ = assign('officer', 'member', 'club_saa', '9000001', 2026)
+check('a club officer cannot give roles', s != 200, str(s))
+s, _ = assign('am', 'member', 'pqd', '87', 2027)
+check("next year's officers are refused before the transition window opens", s != 200 and 'can be entered from' in str(_), str(_)[:120])
+s, _ = assign('am', 'member_k', 'club_president', '9000003', 2026)
+check('the Administration Manager can give any role', s == 200, str(s))
+s, _ = assign('am', 'member', 'maintainer', 'system', 2026)
+check('only a maintainer can give the maintainer role', s != 200, str(s))
+if s != 200:
+    s, rows = request('GET', f"/rest/v1/hdg_roles?role=eq.maintainer&select=id", KEY, T['admin'])
+    mid = rows[0]['id'] if isinstance(rows, list) and rows else None
+    s, _ = rpc('hdg_end_role', T['admin'], {'p_role_id': mid, 'p_ends_on': '2026-12-31'})
+    check('the last maintainer cannot be removed', s != 200, str(s))
+s, d = rpc('hdg_leadership_directory', T['member_k'], {})
+roles = {(x['role'], x['scope_code']) for x in d} if isinstance(d, list) else set()
+check('the leadership directory lists current leaders', ('division_director', 'G') in roles and ('area_director', 'K1') in roles, str(len(roles)))
+check('the leadership directory does not list the maintainer', ('maintainer', 'system') not in roles, '')
+s, d = rpc('hdg_leadership_directory', T['outsider'], {})
+check('an unknown account gets an empty leadership directory', d == [], str(d)[:60])
+
+# Realignment
+s, _ = rpc('hdg_set_alignment', T['chair'], {'p_year': 2027, 'p_club': '9000002', 'p_area': 'G1'})
+check('the Alignment Chair can draft next year\'s alignment', s in (200, 204), str(_)[:120])
+s, _ = rpc('hdg_set_alignment', T['dd_g'], {'p_year': 2027, 'p_club': '9000001', 'p_area': 'K2'})
+check('a Division Director cannot realign clubs', s != 200, str(s))
+s, rows = request('GET', '/rest/v1/hdg_club_alignment?year_start=eq.2027&select=club_number,status', KEY, T['member'])
+check('members do not see draft alignments', rows == [], str(rows)[:80])
+s, rows = request('GET', '/rest/v1/hdg_club_alignment?year_start=eq.2027&select=club_number,status', KEY, T['am'])
+check('the Administration Manager sees draft alignments', isinstance(rows, list) and len(rows) == 1 and rows[0]['status'] == 'draft', str(rows)[:80])
+s, _ = rpc('hdg_set_alignment', T['chair'], {'p_year': 2026, 'p_club': '9000001', 'p_area': 'G2'})
+check('mid-year realignment of an existing club is refused', s != 200, str(s))
+s, n = rpc('hdg_approve_alignment', T['chair'], {'p_year': 2027})
+check('the Alignment Chair can approve next year\'s alignment', s == 200 and n == 1, str(n))
 
 failed = [r for r in results if not r[0]]
 for ok, name, detail in results:

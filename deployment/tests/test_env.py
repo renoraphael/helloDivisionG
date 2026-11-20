@@ -17,7 +17,10 @@ CLI = os.environ.get('SUPABASE_CLI', 'supabase')
 
 
 def cli_json(*args):
-    out = subprocess.run([CLI, *args], capture_output=True, text=True, check=True).stdout
+    run = subprocess.run([CLI, *args], capture_output=True, text=True)
+    if run.returncode:
+        raise SystemExit('Supabase CLI failed: ' + (run.stderr or run.stdout)[-1500:])
+    out = run.stdout
     start = min(i for i in (out.find('['), out.find('{')) if i >= 0)
     return json.loads(out[start:])
 
@@ -46,7 +49,10 @@ def request(method, path, key, token=None, body=None, headers=None):
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             raw = r.read()
-            return r.status, (json.loads(raw) if raw[:1] in (b'{', b'[', b'"') or raw in (b'true', b'false', b'null') else raw)
+            try:
+                return r.status, json.loads(raw) if raw else None
+            except ValueError:
+                return r.status, raw
     except urllib.error.HTTPError as e:
         raw = e.read()
         try:
