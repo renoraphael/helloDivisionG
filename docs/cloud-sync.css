@@ -95,3 +95,5 @@ body.hdg-ballot-page{grid-template-columns:minmax(0,420px)}
  #hdg-cloud-gate[data-mode=signup] .hdg-auth-card>:not(.hdg-signup-aside){margin-left:22px;margin-right:22px}
  #hdg-cloud-gate[data-mode=signup] .hdg-auth-card>h1{margin-top:22px}
 }
+/* The sync bar stays out of the way while presenting: it would cover the presentation controls (it sits above everything else). It returns when the presentation closes. */
+body:has(#presentation.active) #hdg-cloud-bar,body:has(#clubPresentationOverlay.active) #hdg-cloud-bar,body:has(.agenda-secret-slide-overlay.active) #hdg-cloud-bar,body:has(.ballot-demo-overlay.active) #hdg-cloud-bar,body:has(.meeting-public-ballot-overlay.active) #hdg-cloud-bar{display:none!important}

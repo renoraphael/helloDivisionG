@@ -1,0 +1,97 @@
+# The Member parser starts with no selection. Clearing the input also clears
+# the selected club and meeting, while the saved agenda stays in its store.
+remove_script('v478-remember-active-meeting')
+# A Poster meeting enters Agenda only through the explicit Open in Agenda action.
+replace("      if(panel==='agenda')setTimeout(adoptContextInAgenda,0);\n", '')
+replace("    try{showCommunityPanel('agenda');}catch(_){}\n    const btn=document.querySelector('.community-tabs",
+ "    try{showCommunityPanel('agenda');adoptContextInAgenda();}catch(_){}\n    const btn=document.querySelector('.community-tabs")
+
+segment('  function resetAgendaWorkspaceFromImport(removeImportedRecord=true){',
+ "  document.addEventListener('DOMContentLoaded',bindEmptyRosterReset);",
+ """  function resetAgendaWorkspaceFromImport(){
+    agendaGeneratedRecordId='';
+    const paste=$('agendaRosterPaste');
+    const club=$('agendaImportClub');
+    const meeting=$('agendaMeetingSelect');
+    if(paste)paste.value='';
+    if(club)club.value='';
+    if(meeting)meeting.value='';
+    const status=$('agendaImportStatus');
+    if(status){
+      status.className='agenda-import-status';
+      status.textContent='Paste a WhatsApp roster, choose a club, or start a meeting manually.';
+    }
+    renderCommunityAgendaPrototype();
+  }
+  window.resetAgendaWorkspaceFromImport=resetAgendaWorkspaceFromImport;
+  window.clearAgendaPaste=resetAgendaWorkspaceFromImport;
+
+  function bindEmptyRosterReset(){
+    const paste=$('agendaRosterPaste');
+    if(!paste||paste.dataset.v319EmptyResetBound)return;
+    paste.dataset.v319EmptyResetBound='1';
+    paste.addEventListener('input',()=>{
+      if(!paste.value.trim())resetAgendaWorkspaceFromImport();
+    });
+  }
+""")
+# Leave the Poster picker empty unless the member explicitly loads a draft or club.
+segment('  function adoptAgendaInPoster(record){', '  function adoptContextInAgenda(){', '')
+replace("          adoptAgendaInPoster(record);\n", '')
+segment('  const baseShow=window.showCommunityPanel;\n  if(typeof baseShow', '  window.openPosterMeetingInAgenda=function(){', '')
+replace('<div class="poster-quick-meeting-note-v393" id="clubPosterMeetingSource">Meeting details are loaded from Agenda or club schedules.</div>',
+ '<div class="poster-quick-meeting-note-v393" id="clubPosterMeetingSource">Meeting details are loaded from Agenda or club schedules.</div>'
+ '<button id="hdgResumePoster" class="btn ghost compact" type="button" onclick="resumeMemberPosterDraft()" hidden>Resume last poster</button>')
+replace("    window.renderPosterGenerator=function(){const result=basePosterRender.apply(this,arguments);refreshLinkUI();return result;};",
+ """    window.renderPosterGenerator=function(){
+      const result=basePosterRender.apply(this,arguments);
+      const resume=$('hdgResumePoster');
+      if(resume)resume.hidden=!db.ui?.memberPosterDraft?.clubId||!!posterState().clubId;
+      refreshLinkUI();
+      return result;
+    };""")
+replace('  window.openPosterMeetingInAgenda=function(){',
+ """  window.resumeMemberPosterDraft=function(){
+    const saved=db.ui?.memberPosterDraft;
+    if(!saved||!clubById(saved.clubId))return;
+    db.ui.clubPosterGenerator=structuredClone(saved);
+    persist();
+    window.renderPosterGenerator(true);
+  };
+  window.openPosterMeetingInAgenda=function(){""")
+
+replace("    venue:p.locationTitle||p.publicLocation||[club.city,club.island].filter(Boolean).join(' · '),",
+ "    venue:p.publicLocation||p.locationTitle||[club.city,club.island].filter(Boolean).join(' · '),")
+replace("function agendaRefreshRecordClubData(record,club){",
+ """function agendaDefaultAttendance(record,club){
+  if(!club)return '';
+  const series=window.meetingSeriesOfClubV500?.(club).find(item=>item.key===record.meetingSeriesV500);
+  const profile=publicClubProfile(club);
+  const mode=series?.mode||clubRecurringSeries(club).find(item=>item.primary)?.meetingMode||
+    profile.meetingMode||club.mode||'In-person';
+  return {'ONLINE':'Online','HYBRID':'Hybrid','IN PERSON':'In-person'}[calendarModeShort(mode)]||'';
+}
+function agendaRefreshRecordClubData(record,club){""")
+segment("function agendaRefreshRecordClubData(record,club){", "function agendaCreateDraftForClub(club){",
+ source[source.index("function agendaRefreshRecordClubData(record,club){"):source.index("function agendaCreateDraftForClub(club){")].replace(
+  "  record.venue=record.venue||defaults.venue;",
+  "  const formerVenueDefault=[club.city,club.island].filter(Boolean).join(' · ');\n  if(!record.venue||record.venue===formerVenueDefault)record.venue=defaults.venue;").replace(
+  "  record.clubName=club.name;",
+  "  record.clubName=club.name;\n  record.mode=record.attendanceOverride||agendaDefaultAttendance(record,club);"))
+replace('<div class="field agenda-core-venue"><label>Venue</label><input id="agendaEditVenue"></div>',
+ '<div class="field agenda-core-venue"><label>Venue</label><input id="agendaEditVenue"></div>\n'
+ '<div class="field"><label for="agendaEditMeetingMode">Attendance</label><select class="app-standard-select" id="agendaEditMeetingMode">'
+ '<option value="">Use club default</option><option>Hybrid</option><option>Online</option><option>In-person</option></select></div>')
+replace("    const [date,template,theme,wod,venue]=fields;", "    const [date,template,theme,wod,venue,attendance]=fields;")
+replace("    secondaryGrid.append(template,venue);", "    secondaryGrid.append(template,venue,attendance);")
+replace("  set('agendaEditVenue',record.venue);",
+ "  set('agendaEditVenue',record.venue);\n  set('agendaEditMeetingMode',record.attendanceOverride||'');\n  const attendanceDefault=$('agendaEditMeetingMode')?.options[0];\n  if(attendanceDefault){const effective=agendaDefaultAttendance(record,(db.clubs||[]).find(c=>c.number===record.clubNumber));attendanceDefault.textContent=effective?'Club default · '+effective:'Use club default';}")
+# The screen backdrop belongs to the app chrome. The A4 style is club-owned.
+replace('.agenda-a4-stage{display:flex;justify-content:center;overflow:auto;padding:14px;border:1px solid #2C609C;border-radius:13px;background:#062E5D}',
+ """ .agenda-a4-stage{display:flex;justify-content:center;overflow:auto;padding:14px;border:1px solid #2C609C;border-radius:13px;background:#062E5D}
+@media screen {
+ html.theme-ti #agendaGeneratedView{background:#004165;border-color:rgba(169,178,177,.48)}
+ html.theme-maroon #agendaGeneratedView{background:#772432;border-color:rgba(169,178,177,.48)}
+}""")
+replace("  record.venue=get('agendaEditVenue');",
+ "  record.venue=get('agendaEditVenue');\n  if($('agendaEditMeetingMode'))record.attendanceOverride=get('agendaEditMeetingMode');\n  record.mode=record.attendanceOverride||agendaDefaultAttendance(record,club);")
