@@ -115,11 +115,31 @@ begin
      where day ~ '^\d{4}-\d{2}-\d{2}$' and nullif(title,'') is not null
    ), '[]'::jsonb),
    'agendaMembers', coalesce((
-     select jsonb_agg(jsonb_build_object('name', name, 'clubNumber', club_number)
+     select jsonb_agg(jsonb_build_object('name', name, 'clubNumber', club_number, 'nicknames', nicknames)
        order by name, club_number)
      from (
-       select distinct btrim(m->>'name') as name, ltrim(btrim(m->>'clubNumber'), '0') as club_number
+       select distinct btrim(m->>'name') as name, ltrim(btrim(m->>'clubNumber'), '0') as club_number,
+         coalesce((
+           select jsonb_agg(alias order by first_seen)
+           from (
+             select btrim(value) as alias, min(position) as first_seen
+             from jsonb_array_elements_text(
+               case when jsonb_typeof(m->'nicknames') = 'array' then m->'nicknames' else '[]'::jsonb end ||
+               jsonb_build_array(m->>'nickname') ||
+               case when jsonb_typeof(saved.profile->'nicknames') = 'array' then saved.profile->'nicknames' else '[]'::jsonb end
+             ) with ordinality as aliases(value, position)
+             where nullif(btrim(value), '') is not null and length(value) <= 80
+             group by btrim(value)
+           ) agenda_aliases
+         ), '[]'::jsonb) as nicknames
        from jsonb_array_elements(snapshot->'memberships') m
+       cross join lateral (
+         select snapshot->'memberIdentityAliases' -> case
+           when nullif(regexp_replace(lower(m->>'memberId'),'[^a-z0-9]','','g'),'') is not null
+             then 'id:'||regexp_replace(lower(m->>'memberId'),'[^a-z0-9]','','g')
+           else 'name:'||regexp_replace(lower(m->>'name'),'[^a-z0-9]','','g')
+         end as profile
+       ) saved
        where m->>'active' = 'true' and coalesce(m->>'pastMember','false') <> 'true'
          and nullif(btrim(m->>'name'), '') is not null
          and ltrim(btrim(m->>'clubNumber'), '0') ~ '^[0-9]+$'

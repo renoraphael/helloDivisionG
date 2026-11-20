@@ -207,6 +207,30 @@ segment('  function resetAgendaWorkspaceFromImport(removeImportedRecord=true){',
     });
   }
 """)
+# Leave the Poster picker empty unless the member explicitly loads a draft or club.
+segment('  function adoptAgendaInPoster(record){', '  function adoptContextInAgenda(){', '')
+replace("          adoptAgendaInPoster(record);\n", '')
+segment('  const baseShow=window.showCommunityPanel;\n  if(typeof baseShow', '  window.openPosterMeetingInAgenda=function(){', '')
+replace('<div class="poster-quick-meeting-note-v393" id="clubPosterMeetingSource">Meeting details are loaded from Agenda or club schedules.</div>',
+ '<div class="poster-quick-meeting-note-v393" id="clubPosterMeetingSource">Meeting details are loaded from Agenda or club schedules.</div>'
+ '<button id="hdgResumePoster" class="btn ghost compact" type="button" onclick="resumeMemberPosterDraft()" hidden>Resume last poster</button>')
+replace("    window.renderPosterGenerator=function(){const result=basePosterRender.apply(this,arguments);refreshLinkUI();return result;};",
+ """    window.renderPosterGenerator=function(){
+      const result=basePosterRender.apply(this,arguments);
+      const resume=$('hdgResumePoster');
+      if(resume)resume.hidden=!db.ui?.memberPosterDraft?.clubId||!!posterState().clubId;
+      refreshLinkUI();
+      return result;
+    };""")
+replace('  window.openPosterMeetingInAgenda=function(){',
+ """  window.resumeMemberPosterDraft=function(){
+    const saved=db.ui?.memberPosterDraft;
+    if(!saved||!clubById(saved.clubId))return;
+    db.ui.clubPosterGenerator=structuredClone(saved);
+    persist();
+    window.renderPosterGenerator(true);
+  };
+  window.openPosterMeetingInAgenda=function(){""")
 # Preserve the published club handle and channels while removing historical
 # personal contacts and meeting access details from the Member bundle.
 segment(" /* seed: the club's own published agendas", ' function clubContacts(num)', '')
@@ -346,6 +370,10 @@ replace('const DURABLE_INIT_PROMISE=initializeDurableStorage();',"""const DURABL
   for(const key of ['clubs','areas','tlis','contests','specialMeetings'])db.database[key]=community[key];
   db.settings.divisionDirector=community.settings.divisionDirector;
   db.updated=community.updated;
+  if(db.ui?.clubPosterGenerator?.clubId){
+    db.ui.memberPosterDraft=db.ui.clubPosterGenerator;
+    db.ui.clubPosterGenerator={ratio:'4:5'};
+  }
   normalizeDashboardRoleState();
   applyDashboardUser();
   render();
