@@ -6,7 +6,7 @@ Website: https://renoraphael.github.io/helloDivisionG/
 Use this project with any coding assistant. GitHub stores tracked code, instructions, history, branches, and PRs. It does not share chat memory or grant access to another tool. Each assistant needs its own authorized GitHub connection or a checkout on the owner's Mac.
 
 ## Start each task
-1. Read AGENTS.md, project/ARCHITECTURE.md, and project/HANDOFF.md.
+1. Read AGENTS.md, project/ARCHITECTURE.md, project/DISTRICT_PLAN.md (binding agreed rules), and project/HANDOFF.md.
 2. Inspect the current branch, commit, working changes, and open PRs. Pull only after ensuring that existing local work is safe.
 3. Create a task branch. Work on the requested task, then verify the relevant behavior.
 4. Update the handoff, commit tracked changes, push the branch, and open a PR. Record deployment separately.
