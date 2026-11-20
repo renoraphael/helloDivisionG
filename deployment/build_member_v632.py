@@ -116,7 +116,29 @@ replace('  return ensureLeadershipTeams().filter(x=>x.scopeType===scopeType&&x.s
 # Keep the existing v632 theme control in the Member toolbar and cycle the
 # two Toastmasters palettes through the original theme setter.
 replace('body.role-member .toolbar-shell > :not(.user-switcher){display:none!important}',
- 'body.role-member .toolbar-shell > :not(.user-switcher):not(#v622ThemeBtn){display:none!important}')
+ """body.role-member .toolbar-shell > :not(.user-switcher):not(#v622ThemeBtn):not(#hdgMemberSignOut){display:none!important}
+body.role-member .toolbar-shell .user-switcher-summary .chevron{display:none}
+body.role-member .toolbar-shell #hdgMemberSignOut{
+  min-height:44px;
+  padding-inline:12px;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+body.role-member .toolbar-shell #v622ThemeBtn{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  flex-shrink:0;
+  border:1px solid rgba(245,245,245,.65)!important;
+}
+body.role-member .toolbar-shell #v622ThemeBtn svg{width:30px;height:30px}
+@media(max-width:760px){
+  body.role-member .toolbar-shell{flex-wrap:wrap;overflow:visible}
+  body.role-member .toolbar-shell #userSwitcher{flex:1 1 min-content;min-width:0}
+  body.role-member .toolbar-shell .user-switcher-copy{min-width:0}
+  body.role-member .toolbar-shell #userDisplayName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}""")
 replace("ORDER=['classic','ti','maroon'];","ORDER=['ti','maroon'];")
 replace("b.setAttribute('aria-pressed',t==='classic'?'false':'true')","b.setAttribute('aria-pressed',String(t==='maroon'))")
 segment('const DASHBOARD_USERS={','function dashboardUserCatalog(){', '''const DASHBOARD_USERS={
