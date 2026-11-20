@@ -146,7 +146,7 @@ function showAuthMode(create){
  el('hdg-auth-message').textContent='';
 }
 async function showMemberCommunity(data){
- const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v634-member.html',{
+ const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v637-member.html',{
   headers:{apikey:CONFIG.key,Authorization:'Bearer '+session.access_token},cache:'no-store'
  });
  if(!response.ok)throw new Error('The original Member workspace could not be loaded. Please refresh and try again.');
@@ -277,12 +277,12 @@ async function connect(){
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
   el('hdg-auth-message').textContent='Opening v632…';
-  const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v634-community.html',{
+  const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v637-community.html',{
    headers:{apikey:CONFIG.key,Authorization:'Bearer '+session.access_token},cache:'no-store'
   });
   if(!response.ok)throw new Error('The protected v632 app could not be loaded. Please contact the administrator.');
   const html=await response.text();
-  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v634-community";'))throw new Error('The protected app file is not a connected v634 build.');
+  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v637-community";'))throw new Error('The protected app file is not a connected v637 build.');
   global.HDG_ENTRY_LOADER=false;
   document.open();document.write(html);document.close();
   return;
