@@ -48,7 +48,8 @@
  for(const row of data.agendaMembers||[]){
   const club=byNumber.get(safeText(row.clubNumber,24).trim().replace(/^0+/,''));
   const name=safeText(row.name,160).trim();
-  if(club&&name)agendaMembers.push({name,clubNumber:club.number,clubName:club.name,active:true});
+  const nicknames=Array.isArray(row.nicknames)?row.nicknames.map(alias=>safeText(alias,80).trim()).filter(Boolean):[];
+  if(club&&name)agendaMembers.push({name,nicknames,clubNumber:club.number,clubName:club.name,active:true});
  }
  const clubOfficers=new Map();
  for(const row of data.clubOfficers||[]){
