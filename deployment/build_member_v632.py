@@ -207,6 +207,43 @@ segment('  function resetAgendaWorkspaceFromImport(removeImportedRecord=true){',
     });
   }
 """)
+# Preserve level and elective metadata independently of the project title.
+replace("  const project=projectCatalogEntry(pathway,projectNum,projectName);\n  if(!project)return {projectNum:givenCode,projectName:givenName,time:String(time||'').trim()};",
+ r"""  const inlineElective=givenName.match(/^(?:l(?:evel)?\s*)?([1-5])(?:\s*[/:-]\s*|\s+)elective\b\s*(?:project\b\s*)?(.*)$/i);
+  const looseElective=givenName.match(/^(?:[/:–—-]\s*)?elective\b\s*(?:project\b\s*)?(.*)$/i);
+  const codeLevel=givenCode.match(/^L([1-5])(?:[PE]\d+[A-Z]?|E)?$/);
+  if(inlineElective||looseElective||/^L[1-5]E$/.test(givenCode)){
+    const level=Number(inlineElective?.[1]||codeLevel?.[1]||0);
+    const title=(inlineElective?.[2]??looseElective?.[1]??givenName)
+      .replace(/^\s*[-–—:]\s*/,'').trim();
+    const ordinal=title.match(/^(?:elective\s*)?#?\s*(\d{1,2})$/i);
+    const name=ordinal?'Elective '+ordinal[1]:title||'Elective';
+    const key=normalized(name);
+    const eligible=pathwayMeta(pathway)
+      ?pathwayProjectChoices(pathway).filter(item=>item.type==='elective'&&(!level||item.level===level))
+      :level?(PATHWAY_ELECTIVES[level]||[]):[];
+    const match=eligible.find(item=>projectNameAliases(item.name).has(key));
+    if(match)return {projectNum:match.code,projectName:match.name,time:match.timeVerified===false?String(time||'').trim():match.time,
+      projectType:match.type,projectNote:match.note||'',timerReference:match.timerReference||''};
+    return {projectNum:level?'L'+level+'E':'',projectName:name,time:String(time||'').trim(),projectType:'elective'};
+  }
+  const project=projectCatalogEntry(pathway,projectNum,projectName);
+  if(!project)return {projectNum:givenCode,projectName:givenName,time:String(time||'').trim()};""")
+replace("  if(/^L\\d+P\\d+[A-Z]?$/i.test(givenCode)", "  if(/^L\\d+[PE]\\d+[A-Z]?$/i.test(givenCode)")
+replace("    const items=speakers.map((sp,i)=>{total+=agendaUpperTimeMinutes(sp.time,7)+2;",
+ r"""    const items=speakers.map((sp,i)=>{total+=agendaUpperTimeMinutes(sp.time,7)+2;
+      const project=standardizeAgendaProjectFields(sp.projectNum,sp.projectName,sp.time,sp.pathway);
+      const code=agendaPrintValue(project.projectNum).replace(/^(L[1-5])E$/, '$1');""")
+replace("code:agendaPrintValue(sp.projectNum),project:agendaPrintValue(sp.projectName),person:name(sp.name)",
+ "code,project:agendaPrintValue(project.projectName),person:name(sp.name)")
+replace('<span class="m26-sp-meta"><span>${esc(it.pathway)}</span><span>${esc(it.code)}</span><span>${esc(it.project)}</span></span>',
+ """<span class="m26-sp-meta">${it.pathway?`<span>${esc(it.pathway)}</span>`:''}${it.code||it.project?`<span>${it.code?`<b>${esc(it.code)}</b>`:''}${it.code&&it.project?' · ':''}${esc(it.project)}</span>`:''}</span>""")
+replace("grid-template-columns:minmax(0,1.35fr) 10mm minmax(0,1.5fr);gap:2mm;font-size:calc(var(--m26-fs,6.9pt) - .3pt)",
+ "grid-template-columns:minmax(0,1.15fr) minmax(0,1.85fr);gap:2mm;font-size:calc(var(--m26-fs,6.9pt) - .3pt)")
+replace(".agenda-a4-page .m26-sp-meta span:last-child{white-space:normal;line-height:1.15}",
+ ".agenda-a4-page .m26-sp-meta span:last-child{white-space:normal;line-height:1.15}\n"
+ ".agenda-a4-page .m26-sp-meta span:only-child{grid-column:1/-1}\n"
+ ".agenda-a4-page .m26-sp-meta b{white-space:nowrap}")
 # Leave the Poster picker empty unless the member explicitly loads a draft or club.
 segment('  function adoptAgendaInPoster(record){', '  function adoptContextInAgenda(){', '')
 replace("          adoptAgendaInPoster(record);\n", '')
