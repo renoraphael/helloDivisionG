@@ -138,6 +138,38 @@ for script in ('v365-exco-cleanup-startup','v367-membership-name-repair','v504-p
  'v614-projects-workspace','v615-tli2-surabaya','v617-past-exco'):
  remove_script(script)
 
+# The Member parser starts with no selection. Clearing the input also clears
+# the selected club and meeting, while the saved agenda stays in its store.
+remove_script('v478-remember-active-meeting')
+segment('  function resetAgendaWorkspaceFromImport(removeImportedRecord=true){',
+ "  document.addEventListener('DOMContentLoaded',bindEmptyRosterReset);",
+ """  function resetAgendaWorkspaceFromImport(){
+    agendaGeneratedRecordId='';
+    const paste=$('agendaRosterPaste');
+    const club=$('agendaImportClub');
+    const meeting=$('agendaMeetingSelect');
+    if(paste)paste.value='';
+    if(club)club.value='';
+    if(meeting)meeting.value='';
+    const status=$('agendaImportStatus');
+    if(status){
+      status.className='agenda-import-status';
+      status.textContent='Paste a WhatsApp roster, choose a club, or start a meeting manually.';
+    }
+    renderCommunityAgendaPrototype();
+  }
+  window.resetAgendaWorkspaceFromImport=resetAgendaWorkspaceFromImport;
+  window.clearAgendaPaste=resetAgendaWorkspaceFromImport;
+
+  function bindEmptyRosterReset(){
+    const paste=$('agendaRosterPaste');
+    if(!paste||paste.dataset.v319EmptyResetBound)return;
+    paste.dataset.v319EmptyResetBound='1';
+    paste.addEventListener('input',()=>{
+      if(!paste.value.trim())resetAgendaWorkspaceFromImport();
+    });
+  }
+""")
 # Preserve the published club handle and channels while removing historical
 # personal contacts and meeting access details from the Member bundle.
 segment(" /* seed: the club's own published agendas", ' function clubContacts(num)', '')
