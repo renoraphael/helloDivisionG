@@ -14,12 +14,13 @@ root=Path(__file__).resolve().parents[1]
 if args.output.resolve().is_relative_to((root/'docs').resolve()) or args.source.resolve()==args.output.resolve():
  parser.error('Build into a new private path.')
 original=args.source.read_bytes()
-# v632 is the original; v633 adds the rebuilt Division Map; v634 adds the elective-level / misspelt-title parser fix; v637 adds the picker themes, name pickers and the Magical-Bali poster layout.
+# v632 is the original; v633 adds the rebuilt Division Map; v634 adds the elective-level / misspelt-title parser fix; v637 adds the picker themes, name pickers and the Magical-Bali poster layout; v638 makes that layout follow the Toastmasters logo picker.
 assert sha256(original).hexdigest() in (
  "f25b7f5edd31d9b77c3b244dcb1016f67c88be482d54d7ef222bfdad1e096aa9",
  "38c29a459e7ed676eb0afcde1ec43d87435a2585c465b1d7c5733c4fef6398f5",
  "b79fb8fae85f81edde772b5adb2318fe683e0c35e237e2dc77bd1ca0a979c9bd",
- "bb46e07fd7135eda1ee53156403dfe4e7a3580a37821b3970bc826ecc0b0c879")
+ "bb46e07fd7135eda1ee53156403dfe4e7a3580a37821b3970bc826ecc0b0c879",
+ "9cac07ade113f8002506bbb8c04c6d9bc22ee488c9e702df7c6eaae340947daa")
 source=original.decode()
 known_rows=[]
 for key in ('memberRecords','officerRecords'):

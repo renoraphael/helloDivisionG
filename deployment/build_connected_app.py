@@ -23,7 +23,7 @@ for old,new in changes.items():
  source=source.replace(old,new,1)
 # Hosted clients load the shared database. Do not silently replay offline roster,
 # nickname, or attendance seeds against an approved officer's shared records.
-if args.version in ('v632', 'v632-community', 'v633', 'v633-community', 'v634', 'v634-community', 'v637', 'v637-community'):
+if args.version in ('v632', 'v632-community', 'v633', 'v633-community', 'v634', 'v634-community', 'v637', 'v637-community', 'v638', 'v638-community'):
  for migration in ('migrateNov09OfficialRosterV445','migrateNov16OfficialRosterV603'):
   line=f'  candidate={migration}(candidate);\n'
   if source.count(line)!=1:parser.error('Missing or ambiguous embedded roster migration: '+migration)
@@ -51,7 +51,7 @@ if '<head>' not in source[:1000]:parser.error('Expected a document head near the
 import json
 injection='<style id="hdg-cloud-styles">'+css+'</style>\n<script id="hdg-cloud-adapter">'+js+'</script>\n<script id="hdg-release">window.__HDG_APP_RELEASE__='+json.dumps(args.version)+';</script>'
 source=source.replace('<head>','<head>\n'+injection,1)
-if args.version in ('v632-community', 'v633-community', 'v634-community', 'v637-community'):
+if args.version in ('v632-community', 'v633-community', 'v634-community', 'v637-community', 'v638-community'):
  ballot=(root/'deployment/hosted-ballot.js').read_text()
  before, close, after=source.rpartition('</body>')
  if '</script' in ballot.lower() or not close:
