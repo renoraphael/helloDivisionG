@@ -63,7 +63,45 @@ if(typeof global.agendaGeneratedRecordId==='undefined')global.agendaGeneratedRec
 const cloud={SyncQueue,shared,signature};
 global.HDGCloud=cloud;
 function el(id){return document.getElementById(id);}
-function setSession(value){if(value&&!value.expires_at)value.expires_at=Math.floor(Date.now()/1000)+(value.expires_in||3600);session=value;if(value)sessionStorage.setItem(sessionKey,JSON.stringify(value));else sessionStorage.removeItem(sessionKey);}
+function setSession(value){if(value&&!value.expires_at)value.expires_at=Math.floor(Date.now()/1000)+(value.expires_in||3600);session=value;if(value)sessionStorage.setItem(sessionKey,JSON.stringify(value));else{sessionStorage.removeItem(sessionKey);try{caches.delete('hdg-app-v1');}catch(_){}}}
+/* Loads a protected app file. Tries the gzip copy first (about 40% of the size), shows progress, and reuses the copy kept in
+   this browser only when the server answers "not modified" (HTTP 304), so access is still checked on every sign-in.
+   If the gzip copy is missing or the browser cannot unzip, it falls back to the plain file. The kept copy is deleted on sign-out. */
+const APP_CACHE='hdg-app-v1';
+async function fetchAppHtml(name,onProgress){
+ const base=CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/';
+ const tries=typeof DecompressionStream==='function'?[name+'.gz',name]:[name];
+ let cache=null;try{cache=await caches.open(APP_CACHE);}catch(_){}
+ let lastStatus=0;
+ for(let i=0;i<tries.length;i++){
+  const object=tries[i],key='https://hdg.invalid/app/'+object;
+  let cached=null;try{cached=cache?await cache.match(key):null;}catch(_){}
+  const etag=cached&&cached.headers.get('x-etag');
+  const headers={apikey:CONFIG.key,Authorization:'Bearer '+session.access_token};
+  if(etag)headers['If-None-Match']=etag;
+  const response=await fetch(base+object,{headers,cache:'no-store'});
+  lastStatus=response.status;
+  let bytes;
+  if(response.status===304&&cached){
+   bytes=new Uint8Array(await cached.arrayBuffer());
+  }else if(response.ok){
+   const total=Number(response.headers.get('content-length'))||0;
+   if(response.body&&response.body.getReader){
+    const reader=response.body.getReader(),chunks=[];let got=0;
+    for(;;){const step=await reader.read();if(step.done)break;chunks.push(step.value);got+=step.value.length;if(onProgress)onProgress(got,total);}
+    bytes=new Uint8Array(got);let at=0;for(const chunk of chunks){bytes.set(chunk,at);at+=chunk.length;}
+   }else bytes=new Uint8Array(await response.arrayBuffer());
+   const tag=response.headers.get('etag');
+   if(cache&&tag){try{for(const k of await cache.keys())await cache.delete(k);await cache.put(key,new Response(bytes,{headers:{'x-etag':tag}}));}catch(_){}}
+  }else if(i<tries.length-1&&(response.status===400||response.status===404)){
+   continue;
+  }else throw new Error('The protected app could not be loaded (status '+response.status+'). Please refresh and try again.');
+  if(object.endsWith('.gz'))return await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  return new TextDecoder().decode(bytes);
+ }
+ throw new Error('The protected app could not be loaded (status '+lastStatus+').');
+}
+function appProgress(label){return (got,total)=>{const m=el('hdg-auth-message');if(m)m.textContent=label+(total?' '+(got/1048576).toFixed(1)+' of '+(total/1048576).toFixed(1)+' MB':'');};}
 /* A visible Sign out button in the top toolbar of the Leader app (the Member app has its own). It triggers the same sign-out as the status-bar button. */
 function mountToolbarSignOut(){
  let tries=0;
@@ -161,11 +199,8 @@ function showAuthMode(create){
  el('hdg-auth-message').textContent='';
 }
 async function showMemberCommunity(data){
- const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v638-member.html',{
-  headers:{apikey:CONFIG.key,Authorization:'Bearer '+session.access_token},cache:'no-store'
- });
- if(!response.ok)throw new Error('The original Member workspace could not be loaded. Please refresh and try again.');
- const html=await response.text();
+ const m=el('hdg-auth-message');if(m)m.textContent='Opening Hello Division G…';
+ const html=await fetchAppHtml('v638-member.html',appProgress('Opening Hello Division G…'));
  const marker='/* HDG_MEMBER_V632_CONTEXT */';
  if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)){
   throw new Error('The stored file is not an original v632 Member build.');
@@ -291,12 +326,8 @@ async function connect(){
   }
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
-  el('hdg-auth-message').textContent='Opening v632…';
-  const response=await fetch(CONFIG.url+'/storage/v1/object/authenticated/hdg-private-app/v638-community.html',{
-   headers:{apikey:CONFIG.key,Authorization:'Bearer '+session.access_token},cache:'no-store'
-  });
-  if(!response.ok)throw new Error('The protected v632 app could not be loaded. Please contact the administrator.');
-  const html=await response.text();
+  el('hdg-auth-message').textContent='Opening Hello Division G…';
+  const html=await fetchAppHtml('v640-community.html',appProgress('Opening Hello Division G…'));
   if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v640-community";'))throw new Error('The protected app file is not a connected v640 build.');
   global.HDG_ENTRY_LOADER=false;
   document.open();document.write(html);document.close();
