@@ -297,7 +297,7 @@ async function connect(){
   });
   if(!response.ok)throw new Error('The protected v632 app could not be loaded. Please contact the administrator.');
   const html=await response.text();
-  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v639-community";'))throw new Error('The protected app file is not a connected v639 build.');
+  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v640-community";'))throw new Error('The protected app file is not a connected v640 build.');
   global.HDG_ENTRY_LOADER=false;
   document.open();document.write(html);document.close();
   return;
