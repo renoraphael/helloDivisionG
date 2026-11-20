@@ -88,14 +88,14 @@ async function refresh(){
 function mount(){
  if(el('hdg-cloud-gate'))return;
  const gate=document.createElement('section');gate.id='hdg-cloud-gate';
- gate.innerHTML=`<div class="hdg-auth-card"><aside class="hdg-signup-aside" aria-label="How sign-up works"><span class="hdg-signup-brand">HELLO DIVISION G</span><strong class="hdg-signup-title">Join your Division G community</strong><ol class="hdg-signup-steps"><li><b>Use your membership email</b><span>The one on your Toastmasters record.</span></li><li><b>Choose a password</b><span>At least 12 characters.</span></li><li><b>Confirm by email</b><span>Open the link we send you to continue.</span></li></ol><p class="hdg-signup-note">Leadership dashboards also need officer approval.</p></aside><small>HELLO DIVISION G</small><h1>Sign in</h1><p id="hdg-auth-intro"></p><form id="hdg-auth-form"><label>Email<input id="hdg-email" type="email" autocomplete="username" required></label><label>Password<input id="hdg-password" type="password"></label><p id="hdg-password-help" class="hdg-small" hidden>Use at least 12 characters.</p><button id="hdg-sign-in" class="hdg-main-action" type="submit">Sign in</button><div id="hdg-auth-alternatives"><button id="hdg-forgot" type="button">Forgot password?</button><button id="hdg-email-link" type="button">Email me a sign-in link</button></div></form><p id="hdg-auth-message" role="status" aria-live="polite"></p><div class="hdg-auth-switch"><span id="hdg-auth-prompt"></span> <button id="hdg-create" type="button"></button></div></div>`;
+ gate.innerHTML=`<div class="hdg-auth-card"><aside class="hdg-signup-aside" aria-label="How sign-up works"><span class="hdg-signup-brand">HELLO DIVISION G</span><strong class="hdg-signup-title">Join your Division G community</strong><ol class="hdg-signup-steps"><li><b>Use your membership email</b><span>The one on your Toastmasters record.</span></li><li><b>Choose a password</b><span>At least 8 characters.</span></li><li><b>Confirm by email</b><span>Open the link we send you to continue.</span></li></ol><p class="hdg-signup-note">Leadership dashboards also need officer approval.</p></aside><small>HELLO DIVISION G</small><h1>Sign in</h1><p id="hdg-auth-intro"></p><form id="hdg-auth-form"><label>Email<input id="hdg-email" type="email" autocomplete="username" required></label><label>Password<input id="hdg-password" type="password"></label><p id="hdg-password-help" class="hdg-small" hidden>Use at least 8 characters.</p><button id="hdg-sign-in" class="hdg-main-action" type="submit">Sign in</button><div id="hdg-auth-alternatives"><button id="hdg-forgot" type="button">Forgot password?</button><button id="hdg-email-link" type="button">Email me a sign-in link</button></div></form><p id="hdg-auth-message" role="status" aria-live="polite"></p><div class="hdg-auth-switch"><span id="hdg-auth-prompt"></span> <button id="hdg-create" type="button"></button></div></div>`;
  document.body.appendChild(gate);
  const bar=document.createElement('aside');bar.id='hdg-cloud-bar';bar.innerHTML=`<span id="hdg-cloud-status" role="status" aria-live="polite">Connecting…</span><button id="hdg-retry">Retry / refresh</button><button id="hdg-signout">Sign out</button><div id="hdg-conflict" hidden><p>A newer web version was saved. Your local edits have been kept.</p><button id="hdg-download-local">Download my local edits</button><button id="hdg-use-shared">Keep edits in recovery and load shared version</button></div>`;document.body.appendChild(bar);
  el('hdg-auth-form').addEventListener('submit',async event=>{event.preventDefault();await login(creatingAccount);});
  el('hdg-email-link').onclick=()=>emailSignIn();
  el('hdg-forgot').onclick=()=>sendPasswordReset();
  el('hdg-create').onclick=()=>showAuthMode(!creatingAccount);
- el('hdg-password').addEventListener('input',()=>{el('hdg-password-help').dataset.ok=el('hdg-password').value.length>=12?'yes':'no';});
+ el('hdg-password').addEventListener('input',()=>{el('hdg-password-help').dataset.ok=el('hdg-password').value.length>=8?'yes':'no';});
  showAuthMode(global.HDG_ENTRY_LOADER&&new URLSearchParams(location.search).get('view')==='signup');
  el('hdg-retry').onclick=async()=>{await queue.flush();await poll();};
  el('hdg-signout').onclick=async()=>{if(queue.snapshot())await preserveConflict();try{await request('/auth/v1/logout',{});}catch(_){}setSession(null);location.reload();};
@@ -116,7 +116,7 @@ function mount(){
 function showAuthMode(create){
  creatingAccount=create;
  el('hdg-cloud-gate').dataset.mode=create?'signup':'signin';
- el('hdg-password-help').dataset.ok=el('hdg-password').value.length>=12?'yes':'no';
+ el('hdg-password-help').dataset.ok=el('hdg-password').value.length>=8?'yes':'no';
  const signIn=el('hdg-sign-in'), password=el('hdg-password'), toggle=el('hdg-create');
  el('hdg-cloud-gate').querySelector('h1').textContent=create?'Create your account':'Sign in';
  el('hdg-auth-intro').textContent=create
@@ -172,9 +172,9 @@ function showPasswordRecovery(){
  sessionStorage.setItem('hdg.cloud.recovery.v1','true');
  const title=el('hdg-cloud-gate').querySelector('h1');title.textContent='Choose your password';
  const form=document.createElement('form');form.id='hdg-auth-form';
- form.innerHTML='<label>New password<input id="hdg-new-password" type="password" autocomplete="new-password" minlength="12" required></label><label>Confirm new password<input id="hdg-confirm-password" type="password" autocomplete="new-password" minlength="12" required></label><button id="hdg-save-password" type="submit">Save password and sign in</button>';
+ form.innerHTML='<label>New password<input id="hdg-new-password" type="password" autocomplete="new-password" minlength="8" required></label><label>Confirm new password<input id="hdg-confirm-password" type="password" autocomplete="new-password" minlength="8" required></label><button id="hdg-save-password" type="submit">Save password and sign in</button>';
  el('hdg-auth-form').replaceWith(form);
- el('hdg-auth-message').textContent='Choose a password with at least 12 characters.';
+ el('hdg-auth-message').textContent='Choose a password with at least 8 characters.';
  el('hdg-auth-prompt').parentElement.hidden=true;
  form.addEventListener('submit',async event=>{
   event.preventDefault();if(!form.reportValidity())return;
@@ -205,7 +205,7 @@ async function login(create){
  ready=false;
  const email=el('hdg-email').value.trim(),password=el('hdg-password').value;
  if(!password){el('hdg-auth-message').textContent='Enter your app password, or use Email me a sign-in link instead.';return;}
- if(create&&password.length<12){el('hdg-auth-message').textContent='For a new login, choose a password with at least 12 characters. For an existing login, use Sign in with its current password.';return;}
+ if(create&&password.length<8){el('hdg-auth-message').textContent='For a new login, choose a password with at least 8 characters. For an existing login, use Sign in with its current password.';return;}
  el('hdg-auth-message').textContent=create?'Creating your login…':'Signing in…';
  el('hdg-sign-in').disabled=el('hdg-create').disabled=true;
  try{
