@@ -5,6 +5,9 @@ These project instructions apply to every coding assistant used on this project.
 ## Agreed district plan (binding)
 - project/DISTRICT_PLAN.md holds the owner's agreed rules for scaling to Division K and District 87: privacy (no street addresses, PDPA first), member-ID identity, manual fields that imports never overwrite, scoped roles enforced in the database, program years and the 15 May / conference transition window, club-owned templates kept confidential, offline anonymous ballots, test environment and automatic access tests before every release, and a reversible, owner-approved data migration. Read it before any database, access, import, template or release work. Do not change or work around these rules without the owner's explicit approval.
 
+## Club CSV files from other agents
+Save District 87 club exports in `local-data/imports/clubs/` as `district87-clubs-YYYY-MM-DD.csv` (git-ignored; never commit them or copy them into `docs/`). Columns and rules: `deployment/imports/README.md`.
+
 ## Source and data
 - This repository is public by the owner's explicit choice. Never commit member records, original member-bearing HTML, database exports, credentials, or signing material.
 - docs/ contains the GitHub Pages sign-in launcher, CSS, and sync adapter. Pushing changes there to main publishes them.
