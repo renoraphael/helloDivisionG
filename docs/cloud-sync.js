@@ -242,7 +242,7 @@ async function currentAppFile(channel,fallback){
 }
 async function showMemberCommunity(data){
  const m=el('hdg-auth-message');if(m)m.textContent='Opening Hello Division G…';
- const app=await currentAppFile('member','v650-member.html');
+ const app=await currentAppFile('member','v651-member.html');
  const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
  const marker='/* HDG_MEMBER_V632_CONTEXT */';
  if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)){
@@ -420,7 +420,7 @@ async function connect(){
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
   el('hdg-auth-message').textContent='Opening Hello Division G…';
-  const app=await currentAppFile('community','v650-community.html');
+  const app=await currentAppFile('community','v651-community.html');
   const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
   if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="'+app.release+'";'))throw new Error('The protected app file is not a connected '+app.release.replace('-community','')+' build.');
   global.HDG_ENTRY_LOADER=false;

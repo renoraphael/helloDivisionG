@@ -235,3 +235,7 @@ The Member Poster Generator opens without a selected club or meeting. Resume las
 
 ## v650 release: poster colours by division - branch feat/poster-colours-by-division
 - Owner decision: Division G keeps Orange; other divisions get Light gold. Offline `~/Downloads/HelloDivisionG_v650.html` (SHA-256 6423eb8757da5e94334230be48b30bf6c7189667838bd3cff932d401256cd49e, from v649): `palsFor(club)` gives Division G Loyal Blue, True Maroon, Orange, Navy, White, Black, Club colours and other divisions Loyal Blue, True Maroon, Light gold, Navy, White, Black; data() only applies a colour offered to that club. Checked in the browser for a Division G club and the same club moved to K1, including saved-colour fallbacks.
+
+## v651 release: Light gold and Silver gradients - branch feat/gold-silver-gradients
+- Owner decision: Light gold as a gradient like the Toastmasters gradients; White becomes Silver (Cool Gray #A9B2B1 to Fair Gray #F5F5F5). Orange stays for Division G because Bali Speakers Club uses it.
+- Offline `~/Downloads/HelloDivisionG_v651.html` (SHA-256 98f4bb1aa584af1a1eccbf037e589f9b4c3387a9dee77419185c566e80b3fc74, from v650): `PAL_GRAD` (gold #E8CF60 -> #FAF3D0, silver #A9B2B1 -> #F5F5F5); `posterGradV651` turns large rects and paths filled with the chosen colour into a top-to-bottom gradient, only when that colour is actually applied to the club; saved "white" maps to silver; swatches show the gradient. Checked: all 14 layouts in both colours (text dark), Division G ignores Light gold, Orange and Loyal Blue stay flat.
