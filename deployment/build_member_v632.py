@@ -26,7 +26,8 @@ assert sha256(original).hexdigest() in (
  "f117b31eaa221c998fb62c602d959f64ce1b312279379c5885860c163b9f5028",
  "21dca7eb3067d0966fc15840b85620c33ec509f5e01a7d9ac4a636c41617334a",
  "401de3b70c3a70083fb64862fba0f35abce441c916e54d10c4ac69244ea08592",
- "332b7d87bbfa6c67161631e04baa80cdf083b803deca04bf17619cd791ed8df5")
+ "332b7d87bbfa6c67161631e04baa80cdf083b803deca04bf17619cd791ed8df5",
+ "67da4ab69a0ba53a17239f3a8783d4a2d1398ce09215b3aeb7283d103382abb3")
 source=original.decode()
 known_rows=[]
 for key in ('memberRecords','officerRecords'):
@@ -161,7 +162,9 @@ body.role-member .toolbar-shell #v622ThemeBtn svg{width:30px!important;height:30
   body.role-member .app-header .toolbar-shell #v622ThemeBtn{right:12px}
   body.role-member .app-header .toolbar-shell #hdgMemberSignOut{right:66px}
 }""")
-replace("ORDER=['classic','ti','maroon'];","ORDER=['ti','maroon'];")
+# Sources before offline v645 hard-code the picker order; v645 and later read window.HDG_THEMES_ALLOWED (set below).
+if source.count("ORDER=['classic','ti','maroon'];")==1:
+ replace("ORDER=['classic','ti','maroon'];","ORDER=['ti','maroon'];")
 replace("b.setAttribute('aria-pressed',t==='classic'?'false':'true')","b.setAttribute('aria-pressed',String(t==='maroon'))")
 segment('const DASHBOARD_USERS={','function dashboardUserCatalog(){', '''const DASHBOARD_USERS={
  division:{name:'Division Director'},
@@ -377,6 +380,9 @@ replace("const DURABLE_DB_NAME = 'hello_division_g_durable_v1';",
 runtime=(root/'deployment/member-v632-runtime.js').read_text()
 assert '</script' not in runtime.lower()
 source=source.replace('<head>','<head>\n<script id="hdg-member-context">/* HDG_MEMBER_V632_CONTEXT */</script>\n<script>'+runtime+'</script>',1)
+# Members get only the official Toastmasters themes (Loyal Blue, True Maroon); Division G blue is for Division G leaders
+# (owner decision 21 November 2026). Offline v645 and later read this list in the theme boot and picker.
+source=source.replace('<head>','<head>\n<script id="hdg-theme-allowed">window.HDG_THEMES_ALLOWED=["ti","maroon"];</script>',1)
 replace('const DURABLE_INIT_PROMISE=initializeDurableStorage();',"""const DURABLE_INIT_PROMISE=initializeDurableStorage().then(result=>{
   const community=sampleData();
   for(const key of ['clubs','areas','tlis','contests','specialMeetings'])db.database[key]=community[key];
