@@ -29,7 +29,8 @@ assert sha256(original).hexdigest() in (
  "332b7d87bbfa6c67161631e04baa80cdf083b803deca04bf17619cd791ed8df5",
  "67da4ab69a0ba53a17239f3a8783d4a2d1398ce09215b3aeb7283d103382abb3",
  "e4f5f513a52a718aa0c878b528e6af913b6b272f48e338a8273bec7d6936851b",
- "dbe24cfafd2c7f2aee899c7a36b792d878b5a6ce50d85d56ddb797db595dc3b9")
+ "dbe24cfafd2c7f2aee899c7a36b792d878b5a6ce50d85d56ddb797db595dc3b9",
+ "6423eb8757da5e94334230be48b30bf6c7189667838bd3cff932d401256cd49e")
 source=original.decode()
 known_rows=[]
 for key in ('memberRecords','officerRecords'):

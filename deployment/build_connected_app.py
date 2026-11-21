@@ -23,7 +23,7 @@ for old,new in changes.items():
  source=source.replace(old,new,1)
 # Hosted clients load the shared database. Do not silently replay offline roster,
 # nickname, or attendance seeds against an approved officer's shared records.
-if args.version in ('v632', 'v632-community', 'v633', 'v633-community', 'v634', 'v634-community', 'v637', 'v637-community', 'v638', 'v638-community', 'v639', 'v639-community', 'v640', 'v640-community', 'v641', 'v641-community', 'v642', 'v642-community', 'v643', 'v643-community', 'v644', 'v644-community', 'v645', 'v645-community', 'v646', 'v646-community', 'v647', 'v647-community', 'v648', 'v648-community', 'v649', 'v649-community'):
+if args.version in ('v632', 'v632-community', 'v633', 'v633-community', 'v634', 'v634-community', 'v637', 'v637-community', 'v638', 'v638-community', 'v639', 'v639-community', 'v640', 'v640-community', 'v641', 'v641-community', 'v642', 'v642-community', 'v643', 'v643-community', 'v644', 'v644-community', 'v645', 'v645-community', 'v646', 'v646-community', 'v647', 'v647-community', 'v648', 'v648-community', 'v649', 'v649-community', 'v650', 'v650-community'):
  for migration in ('migrateNov09OfficialRosterV445','migrateNov16OfficialRosterV603'):
   line=f'  candidate={migration}(candidate);\n'
   if source.count(line)!=1:parser.error('Missing or ambiguous embedded roster migration: '+migration)
@@ -45,7 +45,7 @@ if args.version in ('v632', 'v632-community', 'v633', 'v633-community', 'v634', 
   source=source[:start]+source[end:]
 # From v640 the Leader build gets the same Community-tab behaviour as the Member build (Agenda parser and Poster start empty,
 # Open in Agenda, Resume last poster, Agenda attendance default and selector, venue default, themed Agenda stage).
-if args.version in ('v640-community', 'v641-community', 'v642-community', 'v643-community', 'v644-community', 'v645', 'v645-community', 'v646', 'v646-community', 'v647', 'v647-community', 'v648', 'v648-community', 'v649', 'v649-community'):
+if args.version in ('v640-community', 'v641-community', 'v642-community', 'v643-community', 'v644-community', 'v645', 'v645-community', 'v646', 'v646-community', 'v647', 'v647-community', 'v648', 'v648-community', 'v649', 'v649-community', 'v650', 'v650-community'):
  import sys
  sys.path.insert(0,str(root/'deployment'))
  import community_parity
@@ -58,13 +58,13 @@ if '<head>' not in source[:1000]:parser.error('Expected a document head near the
 import json
 injection='<style id="hdg-cloud-styles">'+css+'</style>\n<script id="hdg-cloud-adapter">'+js+'</script>\n<script id="hdg-release">window.__HDG_APP_RELEASE__='+json.dumps(args.version)+';</script>'
 source=source.replace('<head>','<head>\n'+injection,1)
-if args.version in ('v632-community', 'v633-community', 'v634-community', 'v637-community', 'v638-community', 'v639-community', 'v640-community', 'v641-community', 'v642-community', 'v643-community', 'v644-community', 'v645', 'v645-community', 'v646', 'v646-community', 'v647', 'v647-community', 'v648', 'v648-community', 'v649', 'v649-community'):
+if args.version in ('v632-community', 'v633-community', 'v634-community', 'v637-community', 'v638-community', 'v639-community', 'v640-community', 'v641-community', 'v642-community', 'v643-community', 'v644-community', 'v645', 'v645-community', 'v646', 'v646-community', 'v647', 'v647-community', 'v648', 'v648-community', 'v649', 'v649-community', 'v650', 'v650-community'):
  ballot=(root/'deployment/hosted-ballot.js').read_text()
  before, close, after=source.rpartition('</body>')
  if '</script' in ballot.lower() or not close:
   parser.error('Could not add the hosted ballot integration.')
  source=before+'<script id="hdg-hosted-ballot">'+ballot+'</script>\n'+close+after
- if args.version in ('v640-community', 'v641-community', 'v642-community', 'v643-community', 'v644-community', 'v645', 'v645-community', 'v646', 'v646-community', 'v647', 'v647-community', 'v648', 'v648-community', 'v649', 'v649-community'):
+ if args.version in ('v640-community', 'v641-community', 'v642-community', 'v643-community', 'v644-community', 'v645', 'v645-community', 'v646', 'v646-community', 'v647', 'v647-community', 'v648', 'v648-community', 'v649', 'v649-community', 'v650', 'v650-community'):
   parity_js=(root/'deployment/leader-community-parity.js').read_text()
   before, close, after=source.rpartition('</body>')
   if '</script' in parity_js.lower() or not close:parser.error('Could not add the Leader Community parity script.')
