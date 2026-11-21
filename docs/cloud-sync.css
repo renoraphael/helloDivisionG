@@ -104,3 +104,9 @@ body:not(.hdg-sync-placed) #hdg-cloud-bar{display:none!important}
 #hdg-sync-alert{position:fixed;z-index:2147483644;bottom:12px;right:12px;padding:9px 16px;border-radius:999px;background:#F2DF74;color:#3B0104;border:1px solid #F2DF74;font:700 13.5px/1.2 inherit;font-family:inherit;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 #hdg-sync-alert[hidden]{display:none}
 body:has(#presentation.active) #hdg-sync-alert,body:has(#clubPresentationOverlay.active) #hdg-sync-alert,body:has(.agenda-secret-slide-overlay.active) #hdg-sync-alert,body:has(.ballot-demo-overlay.active) #hdg-sync-alert,body:has(.meeting-public-ballot-overlay.active) #hdg-sync-alert{display:none!important}
+/* Division setup page (temporary access, deployment/schema/010) */
+.hdg-setup-card .hdg-setup-roles{font-weight:700;margin:.2rem 0 .6rem}
+.hdg-setup-card .hdg-setup-division{border:1px solid rgba(127,127,127,.35);border-radius:12px;padding:.7rem 1rem;margin:.8rem 0}
+.hdg-setup-card .hdg-setup-division h2{font-size:1.05rem;margin:0 0 .3rem}
+.hdg-setup-card .hdg-setup-division ul{margin:0;padding-left:1.1rem}
+.hdg-setup-card .hdg-setup-division li{margin:.15rem 0}

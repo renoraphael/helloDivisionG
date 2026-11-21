@@ -344,6 +344,37 @@ check('after rollback the newer file is no longer downloadable', download('offic
 s, _ = rpc('hdg_rollback_release', T['admin'], {'p_channel': 'member'})
 check('rollback with no earlier release is refused', s != 200, str(s))
 
+# ---------------------------------------------------------------- 010 temporary access while a division is set up
+T['k_new'] = token('k_new')
+s, mode = rpc('hdg_access_mode', T['k_new'])
+check('a new Division K leader without a record has no access yet', mode == 'none', str(mode))
+s, _ = rpc('hdg_add_provisional_person', T['dd_g'], {'p_name': 'Test K Director', 'p_email': cfg['accounts']['k_new']['email']})
+check('a Division Director cannot add provisional people', s != 200, str(s))
+s, pid = rpc('hdg_add_provisional_person', T['admin'], {'p_name': 'Test K Director', 'p_email': cfg['accounts']['k_new']['email'].upper()})
+check('the maintainer can add a provisional person by email', s == 200 and isinstance(pid, str), str(pid)[:80])
+s, pid2 = rpc('hdg_add_provisional_person', T['admin'], {'p_name': 'Again', 'p_email': cfg['accounts']['k_new']['email']})
+check('adding the same email again reuses the record', pid2 == pid, '')
+s, mode = rpc('hdg_access_mode', T['k_new'])
+check('a provisional person without a role still has no access', mode == 'none', str(mode))
+s, _ = rpc('hdg_assign_role', T['admin'], {'p_person': pid, 'p_role': 'division_director', 'p_scope_code': 'K', 'p_year': 2026})
+s, mode = rpc('hdg_access_mode', T['k_new'])
+check('with a temporary Division Director role they get the setup mode', mode == 'setup', str(mode))
+s, ctx = rpc('hdg_my_context', T['k_new'])
+divs = {d['code']: d for d in ctx.get('divisions', [])} if isinstance(ctx, dict) else {}
+check('the setup page shows only their division, with its clubs and areas', set(divs) == {'K'} and divs['K']['clubs'] == 2
+      and divs['K']['areas'] == 2 and ctx.get('provisional') is True, str(ctx)[:160])
+check('the setup page carries no member names or emails', '@' not in str(ctx) and 'Test Member' not in str(ctx), '')
+for f in ('v646-community.html', 'v645-member.html'):
+    st, _ = request('GET', f'/storage/v1/object/authenticated/hdg-private-app/{f}?setup=1', KEY, T['k_new'])
+    check(f'the setup mode cannot download {f}', st != 200, str(st))
+s, rows = request('GET', '/rest/v1/hdg_sync_state?select=division_code', KEY, T['k_new'])
+check('the setup mode cannot read the Division G shared record', rows == [], str(rows)[:60])
+for r, want in (('admin', 'leader'), ('officer', 'leader'), ('member', 'member'), ('outsider', 'none')):
+    s, mode = rpc('hdg_access_mode', T[r])
+    check(f'{r} keeps access mode {want}', mode == want, str(mode))
+s, ctx = rpc('hdg_my_context', T['outsider'])
+check('an unknown account gets no setup context', ctx in (None, ''), str(ctx)[:60])
+
 failed = [r for r in results if not r[0]]
 for ok, name, detail in results:
     print(('PASS ' if ok else 'FAIL ') + name + (f'  [{detail}]' if not ok and detail else ''))

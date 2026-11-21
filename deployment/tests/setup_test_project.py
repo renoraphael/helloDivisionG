@@ -26,6 +26,7 @@ ACCOUNTS = {   # role in the test -> synthetic email
     'chair': 'hdg-alignment-chair@example.com',
     'past_ad': 'hdg-past-ad@example.com',      # Area Director last year only
     'dd_k': 'hdg-dd-k@example.com',            # Division Director K (areas K1 and K2)
+    'k_new': 'hdg-k-director-new@example.com', # signs up before Division K is imported (010 temporary access)
 }
 
 # Fixed IDs for synthetic people, so tests can refer to them.

@@ -56,8 +56,8 @@ Scale Hello Division G (the owner's DTM project) to Hello Division K first, then
 21. **Currency per club** (IDR, MYR, BND).
 
 ### Community tab and templates
-22. **Club poster and agenda designs are the property of each club.** They are confidential to their club (Division G only for now) and must be delivered as protected files, never bundled into code that other divisions download.
-23. Other divisions get a **basic set only**: the half-half poster and similar generic layouts, plus 3–4 agenda formats with the least resemblance to any club's design. The BTC style counts as generic.
+22. **Some club poster and agenda designs are the property of their club.** Owner clarification, 21 November 2026: only the designs the owner names as a club's property are confidential (to that club, Division G only for now); they must be delivered as protected files, never bundled into code that other divisions download. All other designs are shared. The owner keeps the list of club-owned designs; when unsure, ask.
+23. Other divisions get **every design that is not club-owned**: at least the half-half poster and similar generic layouts, plus 3–4 agenda formats. The BTC style counts as generic.
 
 ### Meetings, offline and ballots
 24. **The timer and ballot must work fully offline** and reconnect and sync automatically when signal returns. Each vote carries its own ID, so a vote sent twice is counted once.
@@ -96,7 +96,14 @@ District leaders plus members the owner approves: under 50 people, or under 100 
 9. Error reports to the maintainer.
 10. One-step release rollback.
 
-**Phase 1: Hello Division K.** The two CSV importers (membership roster, club officers), the template split (basic set vs protected club designs), the TI dashboard scraper with a manual fallback, and Division K onboarding.
+**Phase 1: Hello Division K.** Owner decisions, 21 November 2026:
+- **The app moves onto the per-record tables** (the planned switch, not a copy of Division G's single-record model), so it scales to every division. Start with the member side (events, agendas, posters, leadership directory), then the leader dashboards. Division G moves over at the same time, with the owner's approval.
+- Remove the Division G hard-wiring: division name, time zone labels (MYT for Malaysia) and currency (RM for Malaysia) come from each club.
+- **District 87 club directory: imported** (130 clubs, all divisions, 21 November 2026).
+- **Division K people come later**, after the owner's call with the Division K Director. Until then, the Division K Director gets **temporary access**: signing in shows Division K as being set up, with its clubs, and "import members first". The membership and officer CSV importers then assign the Division Director and Area Directors by member ID and bring in officer phone numbers.
+- Malaysian PDPA (rule 4) is met before any Division K member data is imported: privacy notice, deletion on request, retention for past members.
+- The template split follows rule 22 (only named club-owned designs are protected), the TI dashboard scraper has a manual fallback, and Division K gets onboarding.
+- Pilot with the Division K Director's agreement first; District Executive Committee approval before district-wide rollout (rule 37).
 
 **Phase 2: District 87.** District roll-up, district scorecard, district calendar, leadership directory, realignment tool, and Trio, AM and SDO views.
 
