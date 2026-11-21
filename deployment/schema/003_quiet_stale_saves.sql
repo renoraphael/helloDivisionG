@@ -1,9 +1,23 @@
--- 003: stale-revision saves must be refused, not retried forever.
+-- 003: a save based on an older revision is set aside quietly instead of failing or hanging.
 -- Found 20 November 2026 in the test project: hdg_sync_private.save_web_state raised SQLSTATE 40001
 -- (serialization_failure) for "a newer web revision exists". PostgREST retries 40001 automatically, so the
--- refusal never reached the app: the request hung and the database kept re-running it. 'PT409' makes
--- PostgREST answer HTTP 409 at once. docs/cloud-sync.js already treats status 409 as a conflict, so the live
--- launcher needs no change. Only the error code changes; the save logic is identical.
+-- refusal never reached the app: the request hung and the database kept re-running it.
+-- Owner decision, 21 November 2026 (project/DISTRICT_PLAN.md rule 33): do not show an error. The newer
+-- shared data is kept, the late save is stored in hdg_sync_private.superseded_saves so the maintainer can
+-- recover it, and the function answers like a normal save with the revision the app already has.
+-- docs/cloud-sync.js then sees on its next 30-second check that the shared revision is newer and loads it,
+-- so the screen quietly shows the newer data. The live launcher needs no change.
+create table if not exists hdg_sync_private.superseded_saves (
+ request_id uuid primary key,
+ at timestamptz not null default now(),
+ actor uuid not null,
+ base_revision bigint not null,
+ current_revision bigint not null,
+ payload jsonb not null,
+ recovered_at timestamptz);
+alter table hdg_sync_private.superseded_saves enable row level security;
+revoke all on hdg_sync_private.superseded_saves from public, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION hdg_sync_private.save_web_state(p_expected_revision bigint, p_payload jsonb, p_request_id uuid)
  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
 AS $function$
@@ -42,7 +56,9 @@ begin
    return jsonb_build_object('revision',receipt.result_revision,'duplicate',true);
  end if;
  if current_row.revision<>p_expected_revision then
-   raise exception 'A newer web revision exists. Keep local edits and reload the shared version.' using errcode='PT409';
+   insert into hdg_sync_private.superseded_saves(request_id,actor,base_revision,current_revision,payload)
+   values(p_request_id,actor_id,p_expected_revision,current_row.revision,p_payload) on conflict (request_id) do nothing;
+   return jsonb_build_object('revision',p_expected_revision,'duplicate',false,'superseded',true,'latest_revision',current_row.revision);
  end if;
  if exists(select 1 from jsonb_object_keys(current_row.payload->'database') k where not ((p_payload->'database') ? k)) then
    raise exception 'Save would discard existing database fields' using errcode='22023';

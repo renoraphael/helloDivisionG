@@ -78,9 +78,17 @@ s, rows = request('GET', '/rest/v1/hdg_sync_state?select=revision,payload', KEY,
 if s == 200 and rows:
     import time
     t0 = time.time()
-    s, body = rpc('hdg_save_web_state', T['officer'], {'p_expected_revision': rows[0]['revision'] + 5,
-                  'p_payload': rows[0]['payload'], 'p_request_id': str(uuid.uuid4())})
-    check('a save based on an old revision is refused at once with 409', s == 409 and time.time() - t0 < 10, f'{s} {round(time.time() - t0, 1)}s')
+    old_rev = rows[0]['revision'] - 1
+    late = dict(rows[0]['payload']); late['settings'] = dict(late['settings'], divisionDirector='Late Edit')
+    s, body = rpc('hdg_save_web_state', T['officer'], {'p_expected_revision': old_rev,
+                  'p_payload': late, 'p_request_id': str(uuid.uuid4())})
+    quick = time.time() - t0 < 10
+    check('a late save answers at once with no error', s == 200 and quick, f'{s} {round(time.time() - t0, 1)}s')
+    check('a late save is marked set aside and keeps the app on its old revision (so it reloads)',
+          isinstance(body, dict) and body.get('superseded') is True and body.get('revision') == old_rev, str(body)[:120])
+    s2, now_rows = request('GET', '/rest/v1/hdg_sync_state?select=revision,payload', KEY, T['officer'])
+    check('a late save does not change the newer shared data',
+          now_rows[0]['revision'] == rows[0]['revision'] and now_rows[0]['payload']['settings'].get('divisionDirector') != 'Late Edit', '')
 for schema, table in (('hdg_sync_private', 'revision_history'), ('hdg_community_private', 'votes'), ('hdg_private', 'web_imports')):
     for r in ('admin', 'member', 'signed_out'):
         s, body = request('GET', f'/rest/v1/{table}?select=*', KEY, T[r], headers={'Accept-Profile': schema})
@@ -127,7 +135,7 @@ if s == 200:
 
 # ---------------------------------------------------------------- 002 foundation: scoped access
 P = cfg['people']
-for r in ('dd_g', 'ad_g1', 'am', 'prm', 'cross', 'member_k', 'chair', 'past_ad'):
+for r in ('dd_g', 'ad_g1', 'am', 'prm', 'cross', 'member_k', 'chair', 'past_ad', 'dd_k'):
     T[r] = token(r)
 
 
@@ -138,15 +146,17 @@ def seen_people(r):
 
 ALPHA = {P[k] for k in ('admin', 'officer', 'member', 'ad_g1', 'cross')}
 BETA = {P[k] for k in ('past_member', 'dd_g', 'prm', 'past_ad')}
-KAPPA = {P[k] for k in ('am', 'member_k', 'chair', 'kappa_no_account')}
+KAPPA = {P[k] for k in ('am', 'member_k', 'chair', 'kappa_no_account')}      # area K1
+KAPPA2 = {P[k] for k in ('dd_k', 'kappa2_no_account')}                       # area K2
 expect_people = {
     'member': {P['member']},                        # own record only
     'officer': ALPHA,                               # club officer: own club
     'ad_g1': ALPHA,                                 # Area Director G1: clubs in G1
     'dd_g': ALPHA | BETA,                           # Division Director G: all of G, not K
-    'am': ALPHA | BETA | KAPPA,                     # Administration Manager: everyone
+    'am': ALPHA | BETA | KAPPA | KAPPA2,            # Administration Manager: everyone
     'prm': {P['prm']},                              # PRM: roll-ups only, so own record only
-    'cross': {P['cross']} | KAPPA,                  # member in G (own record) + Area Director in K1
+    'cross': {P['cross']} | KAPPA,                  # member in G (own record) + Area Director in K1, not K2
+    'dd_k': KAPPA | KAPPA2,                         # Division Director K: every area in K, not G
     'admin': {P['admin']},                          # maintainer: no silent access; uses the logged function
     'past_ad': {P['past_ad']},                      # last year's Area Director: term ended
     'outsider': set(),
@@ -156,7 +166,7 @@ for r, want in expect_people.items():
     check(f'{r} sees exactly the people in their scope ({len(want)})', got == want, f'got {len(got)}')
 
 s, rows = request('GET', '/rest/v1/hdg_clubs?select=club_number', KEY, T['member_k'])
-check('a member sees every club in the district', isinstance(rows, list) and len(rows) == 3, str(len(rows) if isinstance(rows, list) else s))
+check('a member sees every club in the district', isinstance(rows, list) and len(rows) == 4, str(len(rows) if isinstance(rows, list) else s))
 s, rows = request('GET', '/rest/v1/hdg_clubs?select=club_number', KEY, T['outsider'])
 check('an unknown account sees no clubs', rows == [], str(rows)[:80])
 s, rows = request('GET', '/rest/v1/hdg_people?select=*', KEY, None)
@@ -164,7 +174,7 @@ check('signed-out sees no people', s != 200 or rows == [], str(s))
 
 # Maintainer reads through a function that logs every use
 s, rows = rpc('hdg_maintainer_people', T['admin'], {'p_division': 'K'})
-check('maintainer can read Division K people through the logged function', s == 200 and {x['id'] for x in rows} == KAPPA, str(s))
+check('maintainer can read Division K people through the logged function', s == 200 and {x['id'] for x in rows} == KAPPA | KAPPA2, str(s))
 s, rows = rpc('hdg_maintainer_people', T['am'], {'p_division': 'K'})
 check('non-maintainer cannot use the maintainer function', s != 200, str(s))
 
@@ -176,10 +186,18 @@ def person(r, pid):
 
 # Profiles and manual fields
 me = person('member', P['member'])
-s, ts = rpc('hdg_update_my_profile', T['member'], {'p_person': P['member'], 'p_patch': {'nickname': 'Tester', 'aliases': ['T1', 'T2']}, 'p_expected_updated_at': me['updated_at']})
-check('a member can set their own nickname and aliases', s == 200, str(ts)[:120])
-s, _ = rpc('hdg_update_my_profile', T['member'], {'p_person': P['member'], 'p_patch': {'nickname': 'Again'}, 'p_expected_updated_at': me['updated_at']})
-check('a save based on an old version is refused (no silent overwrite)', s != 200, str(s))
+s, res = rpc('hdg_update_my_profile', T['member'], {'p_person': P['member'], 'p_patch': {'nickname': 'Tester', 'aliases': ['T1', 'T2']}, 'p_expected_updated_at': me['updated_at']})
+check('a member can set their own nickname and aliases', s == 200 and res.get('applied') is True, str(res)[:120])
+ts = res.get('updated_at') if isinstance(res, dict) else None
+s, res = rpc('hdg_update_my_profile', T['member'], {'p_person': P['member'], 'p_patch': {'nickname': 'Again'}, 'p_expected_updated_at': me['updated_at']})
+check('a late edit of the same field answers with no error', s == 200, str(s))
+check('a late edit of the same field keeps the newer value and sets the late one aside',
+      isinstance(res, dict) and res.get('applied') is False and res.get('set_aside') == ['nickname']
+      and person('member', P['member'])['nickname'] == 'Tester', str(res)[:120])
+s, res = rpc('hdg_update_person', T['officer'], {'p_person': P['member'], 'p_patch': {'city': 'Testville'}, 'p_expected_updated_at': me['updated_at']})
+merged = person('officer', P['member'])
+check('a late edit of a different field is still saved (both changes kept)',
+      s == 200 and res.get('applied') is True and merged['city'] == 'Testville' and merged['nickname'] == 'Tester', str(res)[:120])
 s, _ = rpc('hdg_update_my_profile', T['member'], {'p_person': P['member'], 'p_patch': {'email': 'x@example.com'}, 'p_expected_updated_at': ts})
 check('a member cannot change TI fields through their profile', s != 200, str(s))
 s, _ = rpc('hdg_update_my_profile', T['member'], {'p_person': P['officer'], 'p_patch': {'nickname': 'X'}, 'p_expected_updated_at': me['updated_at']})
@@ -188,7 +206,7 @@ check("a member cannot edit someone else's profile", s != 200, str(s))
 target = person('officer', P['member'])
 s, ts2 = rpc('hdg_update_person', T['officer'], {'p_person': P['member'], 'p_patch': {'name': 'Test Member Corrected'}, 'p_expected_updated_at': target['updated_at']})
 after = person('officer', P['member'])
-check('a club officer can correct a member of their club', s == 200, str(ts2)[:120])
+check('a club officer can correct a member of their club', s == 200 and ts2.get('applied') is True, str(ts2)[:120])
 check('a hand-corrected TI field is recorded for the next import', bool(after and 'name' in after['hand_corrected']), '')
 check('manual nickname survives a leader edit', bool(after and after['nickname'] == 'Tester'), '')
 k = person('am', P['member_k'])
@@ -196,6 +214,13 @@ s, _ = rpc('hdg_update_person', T['ad_g1'], {'p_person': P['member_k'], 'p_patch
 check('an Area Director cannot edit a member in another division', s != 200, str(s))
 s, _ = rpc('hdg_update_person', T['cross'], {'p_person': P['member_k'], 'p_patch': {'nickname': 'Kay'}, 'p_expected_updated_at': k['updated_at']})
 check('a cross-division role holder can edit inside their K1 area', s == 200, str(s))
+k2 = person('dd_k', P['kappa2_no_account'])
+s, _ = rpc('hdg_update_person', T['cross'], {'p_person': P['kappa2_no_account'], 'p_patch': {'nickname': 'X'}, 'p_expected_updated_at': k2['updated_at']})
+check('the K1 Area Director cannot edit a member in area K2', s != 200, str(s))
+s, _ = rpc('hdg_update_person', T['dd_k'], {'p_person': P['kappa2_no_account'], 'p_patch': {'nickname': 'Kay Two'}, 'p_expected_updated_at': k2['updated_at']})
+check('the Division K Director can edit a member in any K area', s == 200, str(s))
+s, _ = rpc('hdg_update_person', T['dd_k'], {'p_person': P['member'], 'p_patch': {'nickname': 'X'}, 'p_expected_updated_at': merged['updated_at']})
+check('the Division K Director cannot edit a Division G member', s != 200, str(s))
 
 # Edit history and undo
 s, hist = rpc('hdg_edit_history', T['officer'], {'p_table': 'hdg_people', 'p_key': P['member']})
@@ -251,7 +276,7 @@ if s != 200:
     check('the last maintainer cannot be removed', s != 200, str(s))
 s, d = rpc('hdg_leadership_directory', T['member_k'], {})
 roles = {(x['role'], x['scope_code']) for x in d} if isinstance(d, list) else set()
-check('the leadership directory lists current leaders', ('division_director', 'G') in roles and ('area_director', 'K1') in roles, str(len(roles)))
+check('the leadership directory lists current leaders', {('division_director', 'G'), ('division_director', 'K'), ('area_director', 'K1')} <= roles, str(len(roles)))
 check('the leadership directory does not list the maintainer', ('maintainer', 'system') not in roles, '')
 s, d = rpc('hdg_leadership_directory', T['outsider'], {})
 check('an unknown account gets an empty leadership directory', d == [], str(d)[:60])

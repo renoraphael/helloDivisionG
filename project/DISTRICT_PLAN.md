@@ -9,7 +9,7 @@ Scale Hello Division G (the owner's DTM project) to Hello Division K first, then
 ## Non-negotiable rules
 
 ### Privacy and data
-1. **Never store street address.** CSV importers keep city only. Phone numbers are not stored unless the owner decides otherwise. Unneeded columns are removed in the browser before upload.
+1. **Never store street address.** CSV importers keep city only (city is kept on each person, for search and filtering). Phone numbers are not stored unless the owner decides otherwise. Unneeded columns are removed in the browser before upload.
 2. **Members never see member records outside their own scope.** Club information (name, schedule, venue, area, awards) is visible to everyone in the district.
 3. **Personal tasks and projects are owner-only**, enforced by per-user row-level security, never through the shared division payload. Nobody else can read them, including the Division Director, ADs and district leaders.
 4. **Privacy law priority:** Malaysia PDPA first (stricter), then Indonesia UU PDP. This means a privacy notice, deletion on request, and a retention rule for past members.
@@ -71,7 +71,7 @@ Scale Hello Division G (the owner's DTM project) to Hello Division K first, then
 30. **Release rollback.** The previous app files stay available, and switching back is one step.
 31. **Production data migration is done last and reversibly.** The old shared record (`hdg_sync_state`) and its revision history stay untouched until the new tables have been proven equal and the owner approves the switch.
 32. **Error reports reach the maintainer** through a maintainer-only Reports page, grouped by error. Reports never contain member data.
-33. Simultaneous edits must never overwrite each other (per-record tables, not one shared payload).
+33. Simultaneous edits must never overwrite each other (per-record tables, not one shared payload). **A late edit is never shown as an error** (owner decision, 21 November 2026): an error would discourage people from updating. When an edit is based on an older version, the newer data is kept, the edit answers like a normal save, and the app quietly loads the newer data. Fields nobody else changed in the meantime are still saved, so two people editing different fields of one record both keep their change. The late value is set aside (not deleted) so the maintainer can recover it.
 
 ### Ownership and continuity
 34. Accounts (GitHub, Supabase) move to district ownership, with the owner as admin and at least one tested second admin.

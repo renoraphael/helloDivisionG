@@ -25,6 +25,7 @@ ACCOUNTS = {   # role in the test -> synthetic email
     'member_k': 'hdg-member-k@example.com',
     'chair': 'hdg-alignment-chair@example.com',
     'past_ad': 'hdg-past-ad@example.com',      # Area Director last year only
+    'dd_k': 'hdg-dd-k@example.com',            # Division Director K (areas K1 and K2)
 }
 
 # Fixed IDs for synthetic people, so tests can refer to them.
@@ -36,18 +37,19 @@ PEOPLE = {
     'cross': '00000000-0000-4000-8000-000000000009', 'member_k': '00000000-0000-4000-8000-000000000010',
     'chair': '00000000-0000-4000-8000-000000000011', 'past_ad': '00000000-0000-4000-8000-000000000012',
     'kappa_no_account': '00000000-0000-4000-8000-000000000013',
+    'dd_k': '00000000-0000-4000-8000-000000000014', 'kappa2_no_account': '00000000-0000-4000-8000-000000000015',
 }
 # (person, club, status)
 MEMBERSHIPS = [('admin', '9000001', 'active'), ('officer', '9000001', 'active'), ('member', '9000001', 'active'),
     ('past_member', '9000002', 'past'), ('dd_g', '9000002', 'active'), ('ad_g1', '9000001', 'active'),
     ('am', '9000003', 'active'), ('prm', '9000002', 'active'), ('cross', '9000001', 'active'),
     ('member_k', '9000003', 'active'), ('chair', '9000003', 'active'), ('past_ad', '9000002', 'active'),
-    ('kappa_no_account', '9000003', 'active')]
+    ('kappa_no_account', '9000003', 'active'), ('dd_k', '9000004', 'active'), ('kappa2_no_account', '9000004', 'active')]
 # (person, role, scope_code, year_start)
 ROLES = [('admin', 'maintainer', 'system', None), ('officer', 'club_president', '9000001', 2026),
     ('dd_g', 'division_director', 'G', 2026), ('ad_g1', 'area_director', 'G1', 2026), ('am', 'am', '87', 2026),
     ('prm', 'prm', '87', 2026), ('cross', 'area_director', 'K1', 2026), ('chair', 'alignment_chair', '87', 2026),
-    ('past_ad', 'area_director', 'G2', 2025)]
+    ('past_ad', 'area_director', 'G2', 2025), ('dd_k', 'division_director', 'K', 2026)]
 
 
 def foundation_sql():
@@ -68,15 +70,16 @@ def foundation_sql():
     insert into public.hdg_program_years(year_start, transition_opens) values (2025, '2025-05-15'), (2026, '2026-05-15'), (2027, '2027-05-15');
     insert into public.hdg_divisions(code, name) values ('G', 'Division G'), ('K', 'Division K');
     insert into public.hdg_areas(year_start, code, division_code) values
-      (2025, 'G1', 'G'), (2025, 'G2', 'G'), (2026, 'G1', 'G'), (2026, 'G2', 'G'), (2026, 'K1', 'K'),
+      (2025, 'G1', 'G'), (2025, 'G2', 'G'), (2026, 'G1', 'G'), (2026, 'G2', 'G'), (2026, 'K1', 'K'), (2026, 'K2', 'K'),
       (2027, 'G1', 'G'), (2027, 'K1', 'K'), (2027, 'K2', 'K');
     insert into public.hdg_clubs(club_number, name, city, timezone, currency) values
       ('9000001', 'Test Alpha Club', 'Testville', 'Asia/Makassar', 'IDR'),
       ('9000002', 'Test Beta Club', 'Sampletown', 'Asia/Jakarta', 'IDR'),
-      ('9000003', 'Test Kappa Club', 'Kuching', 'Asia/Kuala_Lumpur', 'MYR');
+      ('9000003', 'Test Kappa Club', 'Kuching', 'Asia/Kuala_Lumpur', 'MYR'),
+      ('9000004', 'Test Kappa Two Club', 'Bandar', 'Asia/Brunei', 'BND');
     insert into public.hdg_club_alignment(year_start, club_number, area_code) values
       (2025, '9000001', 'G1'), (2025, '9000002', 'G2'),
-      (2026, '9000001', 'G1'), (2026, '9000002', 'G2'), (2026, '9000003', 'K1');
+      (2026, '9000001', 'G1'), (2026, '9000002', 'G2'), (2026, '9000003', 'K1'), (2026, '9000004', 'K2');
     insert into public.hdg_people(id, ti_member_id, name, email) values {people};
     insert into public.hdg_memberships(person_id, club_number, status) values {mships};
     insert into public.hdg_roles(person_id, role, scope_type, scope_code, year_start, starts_on, ends_on) values {','.join(roles)};
@@ -159,7 +162,7 @@ def main():
     LOCAL.parent.mkdir(exist_ok=True)
     LOCAL.write_text(json.dumps({'project_ref': TEST_REF, 'publishable_key': publishable, 'accounts': accounts, 'people': PEOPLE}, indent=1))
     LOCAL.chmod(0o600)
-    print(f'Test project {TEST_REF} ready: {len(accounts)} synthetic accounts, 2 clubs, stand-in app files.')
+    print(f'Test project {TEST_REF} ready: {len(accounts)} synthetic accounts, 4 clubs in 2 divisions, stand-in app files.')
 
 
 if __name__ == '__main__':
