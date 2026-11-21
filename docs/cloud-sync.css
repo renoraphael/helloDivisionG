@@ -1,5 +1,5 @@
 /* Hello Division G sign-in shell, status bar and ballot page.
-   Follows the offline v632 design: Classic blue by default, Toastmasters blue / maroon when chosen
+   Toastmasters Loyal Blue by default, True Maroon when chosen (Division G blue only inside the Division G leader app)
    (the app stores the choice in localStorage 'hdg_theme_v622'; index.html applies it before paint).
    Colours and fonts follow project/TI_BRAND_CONSTITUTION.md. */
 @font-face{font-family:'HDG Montserrat';src:url('fonts/montserrat-400.woff2') format('woff2');font-weight:400 600;font-style:normal;font-display:swap}
@@ -12,9 +12,9 @@
   --hdg-bg:#002A63;--hdg-bg-image:none;--hdg-card:#073F80;--hdg-card-edge:#2B5C99;--hdg-card-top:#76AFFF;
   --hdg-input:#00317C;--hdg-input-edge:#3A68A3;--hdg-btn:#0D5CC6;--hdg-btn-edge:#2B5C99;--hdg-btn-soft:#0A4688;
   --hdg-text:#fff;--hdg-muted:#AFC3DF;--hdg-eyebrow:#8FC5FF;--hdg-link:#fff;--hdg-focus:#F2DF74;
-  --hdg-body-font:'HDG Montserrat',Montserrat,Gotham,ui-sans-serif,-apple-system,'Segoe UI',sans-serif;
+  --hdg-body-font:'Myriad Pro','Source Sans 3','Segoe UI',Arial,sans-serif;
   --hdg-head-font:'HDG Montserrat',Montserrat,Gotham,ui-sans-serif,-apple-system,'Segoe UI',sans-serif;
-  --hdg-size-adjust:none;
+  --hdg-size-adjust:.535;
 }
 html.theme-ti{
   --hdg-bg:#004165;--hdg-bg-image:radial-gradient(90% 80% at 50% 35%,#006094 0%,#004165 80%);
@@ -104,3 +104,9 @@ body:not(.hdg-sync-placed) #hdg-cloud-bar{display:none!important}
 #hdg-sync-alert{position:fixed;z-index:2147483644;bottom:12px;right:12px;padding:9px 16px;border-radius:999px;background:#F2DF74;color:#3B0104;border:1px solid #F2DF74;font:700 13.5px/1.2 inherit;font-family:inherit;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 #hdg-sync-alert[hidden]{display:none}
 body:has(#presentation.active) #hdg-sync-alert,body:has(#clubPresentationOverlay.active) #hdg-sync-alert,body:has(.agenda-secret-slide-overlay.active) #hdg-sync-alert,body:has(.ballot-demo-overlay.active) #hdg-sync-alert,body:has(.meeting-public-ballot-overlay.active) #hdg-sync-alert{display:none!important}
+/* Division setup page (temporary access, deployment/schema/010) */
+.hdg-setup-card .hdg-setup-roles{font-weight:700;margin:.2rem 0 .6rem}
+.hdg-setup-card .hdg-setup-division{border:1px solid rgba(127,127,127,.35);border-radius:12px;padding:.7rem 1rem;margin:.8rem 0}
+.hdg-setup-card .hdg-setup-division h2{font-size:1.05rem;margin:0 0 .3rem}
+.hdg-setup-card .hdg-setup-division ul{margin:0;padding-left:1.1rem}
+.hdg-setup-card .hdg-setup-division li{margin:.15rem 0}

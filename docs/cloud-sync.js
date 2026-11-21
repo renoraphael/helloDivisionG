@@ -242,7 +242,7 @@ async function currentAppFile(channel,fallback){
 }
 async function showMemberCommunity(data){
  const m=el('hdg-auth-message');if(m)m.textContent='Opening Hello Division G…';
- const app=await currentAppFile('member','v646-member.html');
+ const app=await currentAppFile('member','v647-member.html');
  const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
  const marker='/* HDG_MEMBER_V632_CONTEXT */';
  if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)){
@@ -378,6 +378,37 @@ async function apply(row){
   normalizeDashboardRoleState();applyDashboardUser();render();
  }finally{applying=false;}
 }
+/* Temporary access (deployment/schema/010): a leader whose division is still being set up sees its status
+   (clubs and areas loaded, members imported or not) instead of "no access". Counts only; built with textContent. */
+const ROLE_LABELS={maintainer:'Maintainer',district_director:'District Director',pqd:'Program Quality Director',cgd:'Club Growth Director',
+ am:'Administration Manager',prm:'Public Relations Manager',fm:'Finance Manager',lm:'Logistics Manager',alignment_chair:'Alignment Chair',
+ division_director:'Division Director',area_director:'Area Director',club_president:'Club President',club_vpe:'VP Education',
+ club_vpm:'VP Membership',club_vppr:'VP Public Relations',club_secretary:'Club Secretary',club_treasurer:'Club Treasurer',club_saa:'Sergeant at Arms'};
+function showDivisionSetup(ctx){
+ ctx=ctx||{};
+ const card=el('hdg-cloud-gate').querySelector('.hdg-auth-card');
+ const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
+ card.replaceChildren();
+ card.classList.add('hdg-setup-card');
+ card.append(node('small','HELLO DISTRICT 87'),node('h1','Hello'+(ctx.name?' '+String(ctx.name).slice(0,40):'')+'!'));
+ const roles=(ctx.roles||[]).filter(r=>r.role!=='maintainer').map(r=>(ROLE_LABELS[r.role]||r.role)+(r.scope&&!/^(87|system)$/.test(r.scope)?' '+r.scope:''));
+ if(roles.length)card.append(node('p',roles.join(' · ')+(ctx.provisional?' (temporary access)':''),'hdg-setup-roles'));
+ card.append(node('p','Your division is being set up in Hello Division G. Club information is ready; members and club officers are imported next.'));
+ for(const d of ctx.divisions||[]){
+  const box=node('section',null,'hdg-setup-division');
+  box.append(node('h2',d.name||('Division '+d.code)));
+  const list=node('ul');
+  list.append(node('li',`${d.clubs} clubs in ${d.areas} areas loaded`));
+  list.append(node('li',d.members>0?`${d.members} members imported`:'Members and club officers: import first'));
+  box.append(list);card.append(box);
+ }
+ if(!(ctx.divisions||[]).length)card.append(node('p','No division is linked to your role yet. Contact the maintainer.'));
+ card.append(node('p','You will get the full app for your division once its member and officer lists are imported.','hdg-small'));
+ const out=node('button','Sign out','hdg-main-action');out.type='button';
+ out.onclick=async()=>{try{await request('/auth/v1/logout',{});}catch(_){}setSession(null);location.reload();};
+ card.append(out);
+ el('hdg-cloud-gate').hidden=false;
+}
 async function connect(){
  if(global.HDG_ENTRY_LOADER){
   const mode=await request('/rest/v1/rpc/hdg_access_mode',{});
@@ -385,10 +416,11 @@ async function connect(){
    await showMemberCommunity(await request('/rest/v1/rpc/hdg_member_community',{}));
    return;
   }
+  if(mode==='setup'){showDivisionSetup(await request('/rest/v1/rpc/hdg_my_context',{}));return;}
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
   el('hdg-auth-message').textContent='Opening Hello Division G…';
-  const app=await currentAppFile('community','v646-community.html');
+  const app=await currentAppFile('community','v647-community.html');
   const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
   if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="'+app.release+'";'))throw new Error('The protected app file is not a connected '+app.release.replace('-community','')+' build.');
   global.HDG_ENTRY_LOADER=false;
