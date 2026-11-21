@@ -231,9 +231,19 @@ function showAuthMode(create){
  el('hdg-auth-alternatives').hidden=create;
  el('hdg-auth-message').textContent='';
 }
+/* Which protected file to load: the release the maintainer made current (hdg_releases, one-step rollback), or the
+   built-in names below if the database has no release list yet. Rolling back needs no new launcher. */
+async function currentAppFile(channel,fallback){
+ try{
+  const r=await request('/rest/v1/rpc/hdg_current_release',{});
+  if(r&&r.channel===channel&&/^v[0-9]{3,4}$/.test(r.version)&&r.file===r.version+'-'+channel+'.html')return{file:r.file,release:r.version+'-'+channel};
+ }catch(_){}
+ return{file:fallback,release:fallback.replace(/\.html$/,'')};
+}
 async function showMemberCommunity(data){
  const m=el('hdg-auth-message');if(m)m.textContent='Opening Hello Division G…';
- const html=await fetchAppHtml('v645-member.html',appProgress('Opening Hello Division G…'));
+ const app=await currentAppFile('member','v645-member.html');
+ const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
  const marker='/* HDG_MEMBER_V632_CONTEXT */';
  if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)){
   throw new Error('The stored file is not an original v632 Member build.');
@@ -248,6 +258,24 @@ async function showMemberCommunity(data){
  document.write(html.replace(marker,()=> 'window.HDG_MEMBER_V632_CONTEXT='+context+';'+greeting));
  document.close();
 }
+/* Error reports to the maintainer (rule 32): at most 5 per page, each different, sent without the sign-in token.
+   Emails and long numbers are removed here and again on the server; the page address is sent without ? or #. */
+(function(){
+ let sent=0,off=false;const seen=new Set();
+ const clean=t=>String(t||'').replace(/[^\s@]+@[^\s@]+\.[A-Za-z]{2,}/g,'[email]').replace(/\+?[0-9][0-9 .-]{5,}[0-9]/g,'[number]');
+ function send(message,stack){
+  const m=clean(message).slice(0,500);
+  if(off||sent>=5||!m||seen.has(m))return;
+  seen.add(m);sent++;
+  try{fetch(CONFIG.url+'/rest/v1/rpc/hdg_report_error',{method:'POST',keepalive:true,headers:{apikey:CONFIG.key,'Content-Type':'application/json'},
+   body:JSON.stringify({p_release:String(global.__HDG_APP_RELEASE__||'launcher').slice(0,40),p_page:location.pathname.slice(0,200),
+    p_message:m,p_stack:clean(stack).slice(0,2000),p_browser:String(navigator.userAgent).slice(0,200)})})
+   .then(r=>{if(r.status===404)off=true;}).catch(()=>{});}catch(_){}
+ }
+ global.addEventListener('error',e=>send(e.message,e.error&&e.error.stack));
+ global.addEventListener('unhandledrejection',e=>{const r=e.reason;send(r&&r.message||String(r),r&&r.stack);});
+ cloud.reportError=send;
+})();
 cloud.openBallot=token=>request('/rest/v1/rpc/hdg_open_ballot',{p_token:token},false);
 cloud.castBallot=(token,browserId,choices)=>request('/rest/v1/rpc/hdg_cast_ballot',{p_token:token,p_browser_id:browserId,p_choices:choices},false);
 cloud.manageBallot=(meetingId,action,title,choices)=>request('/rest/v1/rpc/hdg_manage_ballot',{
@@ -360,8 +388,9 @@ async function connect(){
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
   el('hdg-auth-message').textContent='Opening Hello Division G…';
-  const html=await fetchAppHtml('v645-community.html',appProgress('Opening Hello Division G…'));
-  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="v645-community";'))throw new Error('The protected app file is not a connected v645 build.');
+  const app=await currentAppFile('community','v645-community.html');
+  const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
+  if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="'+app.release+'";'))throw new Error('The protected app file is not a connected '+app.release.replace('-community','')+' build.');
   global.HDG_ENTRY_LOADER=false;
   document.open();document.write(html);document.close();
   return;
