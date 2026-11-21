@@ -7,6 +7,8 @@
 -- recover it, and the function answers like a normal save with the revision the app already has.
 -- docs/cloud-sync.js then sees on its next 30-second check that the shared revision is newer and loads it,
 -- so the screen quietly shows the newer data. The live launcher needs no change.
+-- Applied to production 21 November 2026 with the owner's approval (production function matched 000_baseline exactly
+-- beforehand; afterwards a late save tested inside a rolled-back block answered in 190 ms and left no trace).
 create table if not exists hdg_sync_private.superseded_saves (
  request_id uuid primary key,
  at timestamptz not null default now(),

@@ -2,7 +2,7 @@
 
 - `000_baseline.sql` and `001_member_community.sql` hold the production structure as of v645 (tables, constraints, functions, views, row-level security, policies, grants, auth trigger, private bucket). Structure only: no records.
 - They were read from production with catalog queries and applied to the **test project** `ovmdhkrkogivlvjnbqpj` ("Hello Division G Test", Singapore, free plan). On 20 November 2026 a comparison found identical columns, constraints, policies and function bodies. The only differences were the order of permission entries and Supabase's own `rls_auto_enable` helper.
-- Never apply these files to production (`bhbgusdxqbjwsdlzhurb`). New structure is added as numbered files (002, 003, …), tested in the test project with `deployment/tests/access_matrix.py`, and only reaches production as a separate, owner-approved step (project/DISTRICT_PLAN.md rules 28–31).
+- Never apply 000 or 001 to production (they describe it). Never apply the numbered files to production (`bhbgusdxqbjwsdlzhurb`). New structure is added as numbered files (002, 003, …), tested in the test project with `deployment/tests/access_matrix.py`, and only reaches production as a separate, owner-approved step (project/DISTRICT_PLAN.md rules 28–31).
 
 ## Running the access tests
 
@@ -18,7 +18,7 @@ python3 deployment/tests/legacy_copy_check.py    # Division G copy and compariso
 | File | What it adds | Where |
 |---|---|---|
 | 002_foundation.sql | Per-record tables, scoped access, roles with terms, edit history | test |
-| 003_quiet_stale_saves.sql | Late saves of the shared record are set aside quietly (fixes the hanging save) | test; production waits for approval |
+| 003_quiet_stale_saves.sql | Late saves of the shared record are set aside quietly (fixes the hanging save) | test; **production, applied 21 November 2026** with the owner's approval |
 | 004_quiet_record_edits.sql | Late per-record edits: unchanged fields saved, late values set aside | test |
 | 005_legacy_copy.sql | Copy a division's shared record into the new tables, and compare | test |
 | 006_error_reports.sql | Error reports for the maintainer, grouped and scrubbed | test |
