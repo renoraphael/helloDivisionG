@@ -34,3 +34,6 @@ local-data/
 
 # Third-party reference material (copyrighted, keep local only)
 project/reference/
+
+# Supabase CLI cache
+**/supabase/.temp/
