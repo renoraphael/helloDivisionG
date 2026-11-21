@@ -18,6 +18,7 @@ def legacy_payload():
         {'number': '90001001', 'name': 'Synthetic Bali Club', 'area': 'G1', 'city': 'Testpura', 'island': 'Bali', 'dcpGoals': '4'},
         {'number': '90001002', 'name': 'Synthetic Sulawesi Club', 'area': 'G2', 'city': 'Sampleton', 'island': 'Sulawesi', 'mode': 'Hybrid'},
         {'number': '90001003', 'name': 'Synthetic Java Club', 'area': 'G2', 'city': 'Exampleburg', 'island': 'East Java'},
+        {'number': '00004321', 'name': 'Synthetic Old Club', 'area': 'G1', 'city': 'Testpura', 'island': 'Bali'},   # TI leading zeros
     ]
     m = lambda mid, name, club, active=True, **kw: dict({'key': 'id:' + mid, 'memberId': mid, 'name': name,
         'email': name.split()[1].lower() + '@example.com', 'clubNumber': club, 'active': active,
@@ -30,12 +31,15 @@ def legacy_payload():
         m('10000004', 'Test Delta', '90001002', active=False, renewThrough='2026-09-30'),
         m('10000005', 'Test Echo', '90001002'),
         m('10000006', 'Test Foxtrot', '90001003', email='Foxtrot.Mixed@Example.com'),
+        m('10000007', 'Test Golf', '00004321'),
+        m('10000006', 'Test Foxtrot', '4321', email='Foxtrot.Mixed@Example.com'),                       # same club written without the zeros
         {'key': 'id:', 'memberId': '', 'name': 'No Id Person', 'clubNumber': '90001003', 'active': True},  # skipped: no member ID
     ]
     exco = [
         {'clubNumber': '90001001', 'role': 'Club President', 'memberId': '10000001', 'name': 'Test Alpha', 'term': '2026-07-01 – 2027-06-30'},
         {'clubNumber': '90001001', 'role': 'Club VP Education', 'memberId': '10000002', 'name': 'Test Bravo', 'term': '2026-08-01 – 2027-06-30'},
         {'clubNumber': '90001003', 'role': 'Club Treasurer', 'memberId': '10000003', 'name': 'Test Charlie', 'term': '2026-07-01 – 2027-06-30'},
+        {'clubNumber': '00004321', 'role': 'Club Secretary', 'memberId': '10000007', 'name': 'Test Golf', 'term': '2026-07-01 – 2027-06-30'},
         {'clubNumber': '90001002', 'role': 'Club Liaison no proxy', 'memberId': '10000005', 'name': 'Test Echo', 'term': ''},
     ]
     collections = ['reports', 'tlis', 'contests', 'prospects', 'membershipImports', 'officerImports', 'tasks',
@@ -50,22 +54,26 @@ def legacy_payload():
 results = []
 check = lambda name, ok, detail='': results.append((bool(ok), name, detail))
 P = json.dumps(legacy_payload()).replace("'", "''")
+q = lambda s: sql(s)[0]
 copy = lambda: sql(f"select hdg_sync_private.copy_legacy_division('G', 2026, '{P}'::jsonb) r")[0]['r']
 compare = lambda: sql(f"select * from hdg_sync_private.compare_legacy_division('G', 2026, '{P}'::jsonb)")
 counts = lambda: sql("select (select count(*) from public.hdg_people) people, (select count(*) from public.hdg_memberships) memberships, "
                      "(select count(*) from public.hdg_roles) roles, (select count(*) from hdg_sync_private.edit_history) history")[0]
 
 try:
-    sql(f'truncate {TABLES} cascade;')
+    sql(f'truncate {TABLES} cascade; truncate hdg_sync_private.legacy_records;')
     first = copy()
     rows = compare()
     for r in rows:
         check(f"{r['check_name']}: {r['legacy']} in the shared record, {r['copied']} copied", r['ok'])
-    check('the comparison covers every club', sum(r['check_name'].startswith('active members in club') for r in rows) == 3)
+    check('the comparison covers every club', sum(r['check_name'].startswith('active members in club') for r in rows) == 4)
+    check('a club number with leading zeros is stored once, without them',
+          q("select count(*) n from public.hdg_clubs where club_number = '4321'")['n'] == 1
+          and q("select count(*) n from public.hdg_memberships where club_number = '4321'")['n'] == 2
+          and q("select count(*) n from public.hdg_roles where scope_code = '4321'")['n'] == 1)
     check('Area and Division Directors are listed for assignment by member ID, not matched by name',
           {(x['role'], x['scope']) for x in first['assign_in_app']} == {('area_director', 'G1'), ('division_director', 'G')}, first['assign_in_app'])
 
-    q = lambda s: sql(s)[0]
     check('a member of two clubs is one person with two memberships',
           q("select count(*) n from public.hdg_memberships m join public.hdg_people p on p.id = m.person_id where p.ti_member_id = '10000003'")['n'] == 2)
     check('a row without a member ID is not copied', q("select count(*) n from public.hdg_people where name = 'No Id Person'")['n'] == 0)
@@ -74,12 +82,17 @@ try:
     bravo = q("select nickname, aliases from public.hdg_people where ti_member_id = '10000002'")
     check('nicknames are kept (first as nickname, the rest as aliases)', bravo['nickname'] and len(bravo['aliases']) == 1, bravo)
     check('identity-alias nicknames are kept', q("select nickname from public.hdg_people where ti_member_id = '10000005'")['nickname'] == 'Eko')
-    check('member notes are kept', q("select notes from public.hdg_people where ti_member_id = '10000003'")['notes'] == 'Prefers evening meetings')
+    check('leader notes about a member are kept privately, not in the record the member can read',
+          q("select data->0->>'notes' n from hdg_sync_private.legacy_records where kind = 'member_notes' and key = '10000003'")['n'] == 'Prefers evening meetings'
+          and q("select notes from public.hdg_people where ti_member_id = '10000003'")['notes'] is None)
     check('the liaison entry does not become an officer role', q("select count(*) n from public.hdg_roles r join public.hdg_people p on p.id = r.person_id where p.ti_member_id = '10000005'")['n'] == 0)
     check('an officer term starting in August starts then', q("select starts_on::text d from public.hdg_roles r join public.hdg_people p on p.id = r.person_id where p.ti_member_id = '10000002'")['d'] == '2026-08-01')
     tz = {r['club_number']: r['timezone'] for r in sql('select club_number, timezone from public.hdg_clubs')}
-    check('East Java clubs get WIB, Bali and Sulawesi get WITA', tz == {'90001001': 'Asia/Makassar', '90001002': 'Asia/Makassar', '90001003': 'Asia/Jakarta'}, tz)
-    check('other club fields are kept under details', q("select details->'legacy'->>'dcpGoals' g from public.hdg_clubs where club_number = '90001001'")['g'] == '4')
+    check('East Java clubs get WIB, Bali and Sulawesi get WITA', tz == {'90001001': 'Asia/Makassar', '90001002': 'Asia/Makassar', '90001003': 'Asia/Jakarta', '4321': 'Asia/Makassar'}, tz)
+    check('leader-only club fields are kept privately', q("select data->>'dcpGoals' g from hdg_sync_private.legacy_records where kind = 'club' and key = '90001001'")['g'] == '4')
+    det = {r['club_number']: r['details'] for r in sql('select club_number, details from public.hdg_clubs')}
+    check('the club details every member can read hold only public fields',
+          all(set(d) <= {'meeting_mode'} for d in det.values()) and det['90001002'] == {'meeting_mode': 'Hybrid'}, det)
 
     # Re-running changes nothing, and manual or hand-corrected values survive.
     before = counts()
