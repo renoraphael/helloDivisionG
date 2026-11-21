@@ -24,18 +24,31 @@ alternate_venue_2_public_phone, find_a_club_url, alternate_find_a_club_url, club
 meeting_language, language_evidence, language_source_url, published_venue_address, find_a_club_area, directory_check,
 dashboard_chartered_on, notes`
 
-## How the importer will use it (planned, Phase 1; not built yet)
+## Running the import
 
-- **Identity:** `club_number`, stored without leading zeros (`00763437` and `763437` are the same club) and always
-  shown without them.
-- **Alignment:** `division` + `area` for `program_year`, written to `hdg_club_alignment` for that year only, and only
-  inside the importing person's scope (rule 14).
-- **Club information everyone may see** (rule 2): name, city (`locality`), meeting schedule, format, time zone
-  (`meeting_timezone` mapped to WIB / WITA / WIT / MYT), language, the club's public venue, and its public links.
-- **Club performance** (membership base and to date, DCP goals, Club Success Plan, suspension): stored per club and
-  `checked_on` date, so an older file never overwrites newer figures (rule 13).
-- **Contact columns are club-level public directory data, not member data.** Member street addresses and member
-  phone numbers are never stored (rule 1). Before the import, the owner decides whether the club's public phone and
-  street-level venue address are kept or reduced to city only.
-- `notes`, `language_evidence`, `directory_check` are checking notes for the maintainer, not shown to members.
-- Manual club edits made in the app are never overwritten by an import (rule 11); a differing value is asked about.
+```bash
+export SUPABASE_CLI=/path/to/supabase SUPABASE_WORKDIR=/path/to/supabase-workdir
+python3 deployment/imports/import_clubs.py local-data/imports/clubs/district87-clubs-YYYY-MM-DD.csv               # test project
+python3 deployment/imports/import_clubs.py local-data/imports/clubs/district87-clubs-YYYY-MM-DD.csv --production  # owner approval
+```
+
+## What the import does (deployment/schema/009_club_directory.sql)
+
+- **Identity:** `club_number` without leading zeros (`00763437` = `763437`), always shown without them. Areas without
+  zero padding (`G01` = `G1`). Rows whose area is outside their division, or that lack a number, name, year or date,
+  are refused and listed.
+- **New clubs:** name, city (`locality`), time zone and currency from `country` + `meeting_timezone`
+  (Malaysia: MYT/MYR, Brunei: BNT/BND, Indonesia UTC+7: WIB, UTC+8: WITA, UTC+9: WIT), charter date, and the
+  program year's division, area and alignment.
+- **Existing clubs** keep their name, city, time zone, currency and area (they may have been edited in the app);
+  the TI name is kept beside it and a different area is reported, not changed.
+- **Published club information** (owner decision, rule 1: public club information is published in full): schedule,
+  format, language, venue, street address, locality, state, postal code, country, public phone, links, alternate
+  venues, Find a Club and dashboard links, in `hdg_clubs.details.directory` with its `as_of` date. Readable by every
+  district user, like all club information.
+- **Figures** (membership base and to date, net growth, DCP goals and every `dcp_*` column, Club Success Plan,
+  suspended since) in `hdg_club_figures`, one row per club and `checked_on` date, so history is kept.
+- **Freshest data wins** (rule 13): a file older than the stored directory block does not replace it.
+- **Checking notes** (`notes`, `language_evidence`, `language_source_url`, `directory_check`) are kept privately in
+  `hdg_sync_private.legacy_records` and never shown to members.
+- Re-importing the same file changes nothing. Club officers (with phone numbers) come from the separate officer CSV.

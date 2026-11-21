@@ -9,7 +9,7 @@ Scale Hello Division G (the owner's DTM project) to Hello Division K first, then
 ## Non-negotiable rules
 
 ### Privacy and data
-1. **Never store street address.** CSV importers keep city only (city is kept on each person, for search and filtering). Phone numbers are not stored unless the owner decides otherwise. Unneeded columns are removed in the browser before upload.
+1. **Never store a member's street address or phone number.** For regular members, CSV importers keep city only (city is kept on each person, for search and filtering). Unneeded columns are removed in the browser before upload. Owner decision, 21 November 2026: **club information that is public is published in full** (venue and street address, public phone, links, schedule, as listed in the Toastmasters directory), and **club officers' (exco) phone numbers are kept**, because leaders need to reach them.
 2. **Members never see member records outside their own scope.** Club information (name, schedule, venue, area, awards) is visible to everyone in the district.
 3. **Personal tasks and projects are owner-only**, enforced by per-user row-level security, never through the shared division payload. Nobody else can read them, including the Division Director, ADs and district leaders.
 4. **Privacy law priority:** Malaysia PDPA first (stricter), then Indonesia UU PDP. This means a privacy notice, deletion on request, and a retention rule for past members.

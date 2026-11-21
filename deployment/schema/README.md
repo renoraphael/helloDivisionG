@@ -12,6 +12,7 @@ python3 deployment/tests/setup_test_project.py   # synthetic accounts and data; 
 python3 deployment/tests/access_matrix.py        # exit code 1 if any access check fails
 python3 deployment/tests/legacy_copy_check.py    # Division G copy and comparison on a synthetic record
 python3 deployment/tests/retention_check.py      # clean-up of full copies; re-run setup afterwards
+python3 deployment/tests/club_import_check.py    # club CSV import on synthetic rows; re-run setup afterwards
 ```
 
 ## Files after the baseline
@@ -25,6 +26,7 @@ python3 deployment/tests/retention_check.py      # clean-up of full copies; re-r
 | 006_error_reports.sql | Error reports for the maintainer, grouped and scrubbed | test; **production, applied 21 November 2026** |
 | 007_releases.sql | Release list, current file per channel, one-step rollback | test; **production, applied 21 November 2026** |
 | 008_retention.sql | Clean-up: late copies after 7 days, revision history keeps the last 10 saves | test; **production, applied 21 November 2026** with the owner's approval |
+| 009_club_directory.sql | Club directory import: public club information, dashboard figures per date, private checking notes | test; production structure applied 21 November 2026 (no rows imported yet) |
 
 The setup script writes the synthetic test passwords and the test project's publishable key to `local-data/test-project.json` (git-ignored). Both scripts refuse the production project.
 
