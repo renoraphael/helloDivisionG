@@ -11,6 +11,7 @@ export SUPABASE_CLI=/path/to/supabase     # logged-in Supabase CLI
 python3 deployment/tests/setup_test_project.py   # synthetic accounts and data; safe to re-run
 python3 deployment/tests/access_matrix.py        # exit code 1 if any access check fails
 python3 deployment/tests/legacy_copy_check.py    # Division G copy and comparison on a synthetic record
+python3 deployment/tests/retention_check.py      # clean-up of full copies; re-run setup afterwards
 ```
 
 ## Files after the baseline
@@ -23,5 +24,6 @@ python3 deployment/tests/legacy_copy_check.py    # Division G copy and compariso
 | 005_legacy_copy.sql | Copy a division's shared record into the new tables, and compare | test |
 | 006_error_reports.sql | Error reports for the maintainer, grouped and scrubbed | test |
 | 007_releases.sql | Release list, current file per channel, one-step rollback | test |
+| 008_retention.sql | Clean-up: late copies after 7 days, revision history keeps the last 10 saves | test; **production, applied 21 November 2026** with the owner's approval |
 
 The setup script writes the synthetic test passwords and the test project's publishable key to `local-data/test-project.json` (git-ignored). Both scripts refuse the production project.
