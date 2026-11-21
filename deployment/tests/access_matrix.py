@@ -295,6 +295,55 @@ check('mid-year realignment of an existing club is refused', s != 200, str(s))
 s, n = rpc('hdg_approve_alignment', T['chair'], {'p_year': 2027})
 check('the Alignment Chair can approve next year\'s alignment', s == 200 and n == 1, str(n))
 
+# ---------------------------------------------------------------- 006 error reports
+report = {'p_release': 'v645-community', 'p_page': '/ballot.html#vote=11111111-2222-4333-8444-555555555555',
+          'p_message': 'TypeError: cannot read name of hdg-member@example.com, member 12345678, +62 812 3456 7890',
+          'p_stack': 'at render (app.html:120:7)', 'p_browser': 'Test browser'}
+s1, _ = rpc('hdg_report_error', None, report)
+s2, _ = rpc('hdg_report_error', T['member'], dict(report, p_stack='at render (app.html:121:9)'))
+check('anyone, even signed out, can send an error report', s1 in (200, 204) and s2 in (200, 204), f'{s1} {s2}')
+s, reps = rpc('hdg_error_reports', T['admin'], {})
+rep = reps[0] if isinstance(reps, list) and len(reps) == 1 else {}
+check('the same error is grouped into one report with a count', rep.get('times') == 2, str(reps)[:160])
+text = ' '.join(str(rep.get(k)) for k in ('page', 'message', 'stack'))
+check('error reports carry no emails, member IDs, phone numbers or ballot links',
+      '@' not in text and '12345678' not in text and '3456' not in text and 'vote=' not in text and '1111' not in text, text[:200])
+for r in ('officer', 'member', 'am', 'signed_out'):
+    s, body = rpc('hdg_error_reports', T[r], {})
+    check(f'{r} cannot read error reports', s != 200, str(s))
+s, _ = rpc('hdg_resolve_error', T['admin'], {'p_fingerprint': rep.get('fingerprint'), 'p_release': 'v646'})
+s, reps = rpc('hdg_error_reports', T['admin'], {})
+check('a resolved error leaves the open list', s == 200 and reps == [], str(reps)[:80])
+rpc('hdg_report_error', None, report)
+s, reps = rpc('hdg_error_reports', T['admin'], {})
+check('a resolved error that happens again reopens', isinstance(reps, list) and len(reps) == 1 and reps[0]['times'] == 3, str(reps)[:80])
+
+# ---------------------------------------------------------------- 007 releases and rollback
+def current(r):
+    s, body = rpc('hdg_current_release', T[r], {})
+    return body.get('file') if isinstance(body, dict) else None
+
+def download(r, f):
+    return request('GET', f'/storage/v1/object/authenticated/hdg-private-app/{f}', KEY, T[r] or KEY)[0]
+
+check('a leader is told to load the current community file', current('officer') == 'v645-community.html', str(current('officer')))
+check('a member is told to load the current member file', current('member') == 'v645-member.html', str(current('member')))
+check('an unknown account is told no file', current('outsider') is None, '')
+check('an uploaded but not yet current release cannot be downloaded', download('officer', 'v646-community.html') != 200, '')
+s, _ = rpc('hdg_set_release', T['officer'], {'p_channel': 'community', 'p_version': 'v646'})
+check('only the maintainer can switch releases', s != 200, str(s))
+s, _ = rpc('hdg_set_release', T['admin'], {'p_channel': 'community', 'p_version': 'v646'})
+check('the maintainer can make a new release current', s == 200 and current('officer') == 'v646-community.html', str(s))
+check('leaders can download the new current file', download('officer', 'v646-community.html') == 200, '')
+check('members cannot download the community file', download('member', 'v646-community.html') != 200, '')
+check('members keep their own channel', current('member') == 'v645-member.html', '')
+s, back = rpc('hdg_rollback_release', T['admin'], {'p_channel': 'community'})
+check('rollback is one step back to the previous release', s == 200 and current('officer') == 'v645-community.html', str(back)[:120])
+# The storage CDN can repeat a cached answer for the exact same address and sign-in token, so check with a fresh request.
+check('after rollback the newer file is no longer downloadable', download('officer', 'v646-community.html?after=rollback') != 200, '')
+s, _ = rpc('hdg_rollback_release', T['admin'], {'p_channel': 'member'})
+check('rollback with no earlier release is refused', s != 200, str(s))
+
 failed = [r for r in results if not r[0]]
 for ok, name, detail in results:
     print(('PASS ' if ok else 'FAIL ') + name + (f'  [{detail}]' if not ok and detail else ''))

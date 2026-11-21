@@ -150,7 +150,7 @@ def main():
     sql(foundation_sql())
 
     # Stand-in app files and the same per-file policies production uses.
-    for name in ('v645-community.html', 'v645-member.html'):
+    for name in ('v645-community.html', 'v645-member.html', 'v646-community.html'):
         body = f'<!doctype html><title>{name}</title>synthetic test file'.encode()
         request('POST', f'/storage/v1/object/hdg-private-app/{name}', secret, secret, body,
                 {'Content-Type': 'text/html', 'x-upsert': 'true'})
@@ -158,6 +158,15 @@ def main():
     names = [w.split()[0] for w in policy.split('create policy ')[1:]]
     sql(' '.join(f'drop policy if exists {n} on storage.objects;' for n in names))
     sql(policy.replace('begin;', '').replace('commit;', ''))
+
+    # Registered releases (007): v645 is current for both channels; v646 community is uploaded but not current.
+    sql("""
+    truncate public.hdg_releases; truncate hdg_sync_private.error_reports;
+    insert into public.hdg_releases(channel, version, file, is_current, made_current_at) values
+      ('community', 'v645', 'v645-community.html', true, now() - interval '1 day'),
+      ('member', 'v645', 'v645-member.html', true, now() - interval '1 day'),
+      ('community', 'v646', 'v646-community.html', false, null);
+    """)
 
     LOCAL.parent.mkdir(exist_ok=True)
     LOCAL.write_text(json.dumps({'project_ref': TEST_REF, 'publishable_key': publishable, 'accounts': accounts, 'people': PEOPLE}, indent=1))
