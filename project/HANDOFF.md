@@ -242,3 +242,12 @@ The Member Poster Generator opens without a selected club or meeting. Resume las
 
 ## v652 release: poster templates grouped by club - branch feat/poster-picker-grouping
 - Owner request: templates from the same club sit together. Offline `~/Downloads/HelloDivisionG_v652.html` (SHA-256 1fd13c8f83e8e4c0e62447f5b70fa7352b73a6cb716fad6546feeebc4aa4e12d, from v651) reorders LAYOUTS only: all divisions (split, field, fullbleed, datehero, halves), then Bali Speakers Club (minimal), Bali TM (phototop, typo, banner), Denpasar Bahasa (pill), Magical-Bali (mbtc, question), Surabaya (event, stc2025). The picker's "See more templates" view follows this order; a club's own designs still come first in the short view. Checked in the browser.
+
+## v655 release — poster fees, registration QR, and footer alignment
+
+- v653 preserves both prices and the full fee note in Split editorial, Bold colour field, and Date first. v654 bundles the QR encoder, normalizes scheme-less registration addresses, and adds QR mode to Magical-Bali signature. v655 adds two-line fees to Half & half and Full-bleed photo, and aligns Full-bleed's footer headings.
+- Source SHA-256 `93905b70d2a1688bc469246e104c165e930d595f58a81df06dda3596173e5d10`.
+- Protected files in `hdg-private-app`: `v655-community.html` SHA-256 `e9d879acae52ea8cd05e176f1ad4fe774cf61e04893006a3178d31901f03e79c`; `v655-member.html` SHA-256 `579c83ebebeab57a29191dcf9bbaa093bd446919a65929025d48ccdcff0d55ac`. Both have verified gzip counterparts.
+- Both builds passed local QR/link checks across 14 layouts and fee/footer checks with short and long addresses. The standalone Safari preview and decoded registration QR were also verified.
+- Production deployment on 22 November 2026: the four private uploads matched their local bytes, and Supabase reports v655 as current for both Community and Member. The cutover verified matching-channel access for both roles and denied cross-channel, unsigned, and unapproved access. v652 and its policies remain available for rollback. Generated HTML remains in private storage.
+- The refreshed synthetic test project passed 184/184 general access checks and 42/42 v655-specific role, download, activation, and rollback checks.
