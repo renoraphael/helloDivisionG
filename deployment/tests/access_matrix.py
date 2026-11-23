@@ -135,7 +135,7 @@ if s == 200:
 
 # ---------------------------------------------------------------- 002 foundation: scoped access
 P = cfg['people']
-for r in ('dd_g', 'ad_g1', 'am', 'prm', 'cross', 'member_k', 'chair', 'past_ad', 'dd_k'):
+for r in ('dd_g', 'ad_g1', 'am', 'prm', 'cross', 'member_k', 'chair', 'past_ad', 'dd_k', 'council_k'):
     T[r] = token(r)
 
 
@@ -147,7 +147,7 @@ def seen_people(r):
 ALPHA = {P[k] for k in ('admin', 'officer', 'member', 'ad_g1', 'cross')}
 BETA = {P[k] for k in ('past_member', 'dd_g', 'prm', 'past_ad')}
 KAPPA = {P[k] for k in ('am', 'member_k', 'chair', 'kappa_no_account')}      # area K1
-KAPPA2 = {P[k] for k in ('dd_k', 'kappa2_no_account')}                       # area K2
+KAPPA2 = {P[k] for k in ('dd_k', 'kappa2_no_account', 'council_k')}          # area K2
 expect_people = {
     'member': {P['member']},                        # own record only
     'officer': ALPHA,                               # club officer: own club
@@ -157,6 +157,7 @@ expect_people = {
     'prm': {P['prm']},                              # PRM: roll-ups only, so own record only
     'cross': {P['cross']} | KAPPA,                  # member in G (own record) + Area Director in K1, not K2
     'dd_k': KAPPA | KAPPA2,                         # Division Director K: every area in K, not G
+    'council_k': KAPPA | KAPPA2,                    # Division K council member: reads all of K, not G
     'admin': {P['admin']},                          # maintainer: no silent access; uses the logged function
     'past_ad': {P['past_ad']},                      # last year's Area Director: term ended
     'outsider': set(),
@@ -374,6 +375,44 @@ for r, want in (('admin', 'leader'), ('officer', 'leader'), ('member', 'member')
     check(f'{r} keeps access mode {want}', mode == want, str(mode))
 s, ctx = rpc('hdg_my_context', T['outsider'])
 check('an unknown account gets no setup context', ctx in (None, ''), str(ctx)[:60])
+
+# ---------------------------------------------------------------- 011 division council: read-only, edit by exception
+kk = person('dd_k', P['kappa2_no_account'])
+s, res = rpc('hdg_update_person', T['council_k'], {'p_person': P['kappa2_no_account'], 'p_patch': {'nickname': 'Council edit'}, 'p_expected_updated_at': kk['updated_at']})
+check('a division council member cannot edit by default', s != 200, str(s))
+s, rows = request('GET', f"/rest/v1/hdg_roles?person_id=eq.{P['council_k']}&role=eq.division_council&select=id,title", KEY, T['council_k'])
+council_role = rows[0]['id'] if isinstance(rows, list) and rows else None
+check('the council role carries its title', isinstance(rows, list) and rows and rows[0]['title'] == 'Assistant Director Program Quality', str(rows)[:120])
+for r in ('dd_g', 'cross', 'council_k'):
+    s, _ = rpc('hdg_grant_role_edit', T[r], {'p_role_id': council_role, 'p_granted': True})
+    check(f'{r} cannot grant editing to a Division K council member', s != 200, str(s))
+s, _ = rpc('hdg_grant_role_edit', T['dd_k'], {'p_role_id': council_role, 'p_granted': True})
+check('the Division K Director can grant editing to their council member', s in (200, 204), str(s))
+kk = person('dd_k', P['kappa2_no_account'])
+s, res = rpc('hdg_update_person', T['council_k'], {'p_person': P['kappa2_no_account'], 'p_patch': {'nickname': 'Council edit'}, 'p_expected_updated_at': kk['updated_at']})
+check('with the exception granted, the council member can edit in Division K', s == 200 and res.get('applied') is True, str(res)[:100])
+s, _ = rpc('hdg_update_person', T['council_k'], {'p_person': P['member'], 'p_patch': {'nickname': 'X'}, 'p_expected_updated_at': kk['updated_at']})
+check('even with editing granted, a Division K council member cannot edit Division G', s != 200, str(s))
+rpc('hdg_grant_role_edit', T['dd_k'], {'p_role_id': council_role, 'p_granted': False})
+kk = person('dd_k', P['kappa2_no_account'])
+s, _ = rpc('hdg_update_person', T['council_k'], {'p_person': P['kappa2_no_account'], 'p_patch': {'nickname': 'Again'}, 'p_expected_updated_at': kk['updated_at']})
+check('after the exception is withdrawn, editing is refused again', s != 200, str(s))
+s, nid = rpc('hdg_assign_role', T['dd_k'], {'p_person': P['kappa2_no_account'], 'p_role': 'division_council', 'p_scope_code': 'K', 'p_year': 2026})
+check('the Division K Director can add a council member', s == 200, str(nid)[:80])
+s, _ = rpc('hdg_assign_role', T['dd_g'], {'p_person': P['kappa2_no_account'], 'p_role': 'division_council', 'p_scope_code': 'K', 'p_year': 2026})
+check('the Division G Director cannot add Division K council members', s != 200, str(s))
+s, _ = rpc('hdg_assign_role', T['cross'], {'p_person': P['kappa2_no_account'], 'p_role': 'division_council', 'p_scope_code': 'K', 'p_year': 2026})
+check('an Area Director cannot add council members', s != 200, str(s))
+s, _ = rpc('hdg_set_role_title', T['dd_k'], {'p_role_id': nid, 'p_title': 'Public Relations Manager'})
+s, d = rpc('hdg_leadership_directory', T['member_k'], {})
+titles = {(x['role'], x['scope_code'], x.get('title')) for x in d} if isinstance(d, list) else set()
+check('the leadership directory shows council members with their titles',
+      ('division_council', 'K', 'Assistant Director Program Quality') in titles and ('division_council', 'K', 'Public Relations Manager') in titles, str(titles)[:160])
+s, mode = rpc('hdg_access_mode', T['council_k'])
+check('a council member without Division G membership gets the setup page', mode == 'setup', str(mode))
+s, ctx = rpc('hdg_my_context', T['council_k'])
+check("the council member's setup page shows Division K and the title",
+      isinstance(ctx, dict) and [x['code'] for x in ctx.get('divisions', [])] == ['K'] and any(r.get('title') for r in ctx.get('roles', [])), str(ctx)[:160])
 
 failed = [r for r in results if not r[0]]
 for ok, name, detail in results:

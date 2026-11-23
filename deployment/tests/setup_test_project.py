@@ -27,6 +27,7 @@ ACCOUNTS = {   # role in the test -> synthetic email
     'past_ad': 'hdg-past-ad@example.com',      # Area Director last year only
     'dd_k': 'hdg-dd-k@example.com',            # Division Director K (areas K1 and K2)
     'k_new': 'hdg-k-director-new@example.com', # signs up before Division K is imported (010 temporary access)
+    'council_k': 'hdg-council-k@example.com',  # Division K council member (011): read-only across Division K
 }
 
 # Fixed IDs for synthetic people, so tests can refer to them.
@@ -39,18 +40,19 @@ PEOPLE = {
     'chair': '00000000-0000-4000-8000-000000000011', 'past_ad': '00000000-0000-4000-8000-000000000012',
     'kappa_no_account': '00000000-0000-4000-8000-000000000013',
     'dd_k': '00000000-0000-4000-8000-000000000014', 'kappa2_no_account': '00000000-0000-4000-8000-000000000015',
+    'council_k': '00000000-0000-4000-8000-000000000016',
 }
 # (person, club, status)
 MEMBERSHIPS = [('admin', '9000001', 'active'), ('officer', '9000001', 'active'), ('member', '9000001', 'active'),
     ('past_member', '9000002', 'past'), ('dd_g', '9000002', 'active'), ('ad_g1', '9000001', 'active'),
     ('am', '9000003', 'active'), ('prm', '9000002', 'active'), ('cross', '9000001', 'active'),
     ('member_k', '9000003', 'active'), ('chair', '9000003', 'active'), ('past_ad', '9000002', 'active'),
-    ('kappa_no_account', '9000003', 'active'), ('dd_k', '9000004', 'active'), ('kappa2_no_account', '9000004', 'active')]
+    ('kappa_no_account', '9000003', 'active'), ('dd_k', '9000004', 'active'), ('kappa2_no_account', '9000004', 'active'), ('council_k', '9000004', 'active')]
 # (person, role, scope_code, year_start)
 ROLES = [('admin', 'maintainer', 'system', None), ('officer', 'club_president', '9000001', 2026),
     ('dd_g', 'division_director', 'G', 2026), ('ad_g1', 'area_director', 'G1', 2026), ('am', 'am', '87', 2026),
     ('prm', 'prm', '87', 2026), ('cross', 'area_director', 'K1', 2026), ('chair', 'alignment_chair', '87', 2026),
-    ('past_ad', 'area_director', 'G2', 2025), ('dd_k', 'division_director', 'K', 2026)]
+    ('past_ad', 'area_director', 'G2', 2025), ('dd_k', 'division_director', 'K', 2026), ('council_k', 'division_council', 'K', 2026)]
 
 
 def foundation_sql():
@@ -61,7 +63,7 @@ def foundation_sql():
     roles = []
     for k, role, code, year in ROLES:
         scope = ('club' if role.startswith('club_') else 'area' if role == 'area_director' else
-                 'division' if role == 'division_director' else 'system' if role == 'maintainer' else 'district')
+                 'division' if role in ('division_director', 'division_council') else 'system' if role == 'maintainer' else 'district')
         start = "current_date" if year is None else f"make_date({year}, 7, 1)"
         end = 'null' if year is None else f"make_date({year + 1}, 6, 30)"
         roles.append(f"({q(PEOPLE[k])}, {q(role)}, {q(scope)}, {q(code)}, {q(year)}::int, {start}, {end})")
@@ -84,6 +86,7 @@ def foundation_sql():
     insert into public.hdg_people(id, ti_member_id, name, email) values {people};
     insert into public.hdg_memberships(person_id, club_number, status) values {mships};
     insert into public.hdg_roles(person_id, role, scope_type, scope_code, year_start, starts_on, ends_on) values {','.join(roles)};
+    update public.hdg_roles set title = 'Assistant Director Program Quality' where role = 'division_council';
     """
 
 

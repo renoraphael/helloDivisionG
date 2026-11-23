@@ -382,7 +382,7 @@ async function apply(row){
    (clubs and areas loaded, members imported or not) instead of "no access". Counts only; built with textContent. */
 const ROLE_LABELS={maintainer:'Maintainer',district_director:'District Director',pqd:'Program Quality Director',cgd:'Club Growth Director',
  am:'Administration Manager',prm:'Public Relations Manager',fm:'Finance Manager',lm:'Logistics Manager',alignment_chair:'Alignment Chair',
- division_director:'Division Director',area_director:'Area Director',club_president:'Club President',club_vpe:'VP Education',
+ division_director:'Division Director',division_council:'Division Council',area_director:'Area Director',club_president:'Club President',club_vpe:'VP Education',
  club_vpm:'VP Membership',club_vppr:'VP Public Relations',club_secretary:'Club Secretary',club_treasurer:'Club Treasurer',club_saa:'Sergeant at Arms'};
 function showDivisionSetup(ctx){
  ctx=ctx||{};
@@ -391,7 +391,7 @@ function showDivisionSetup(ctx){
  card.replaceChildren();
  card.classList.add('hdg-setup-card');
  card.append(node('small','HELLO DISTRICT 87'),node('h1','Hello'+(ctx.name?' '+String(ctx.name).slice(0,40):'')+'!'));
- const roles=(ctx.roles||[]).filter(r=>r.role!=='maintainer').map(r=>(ROLE_LABELS[r.role]||r.role)+(r.scope&&!/^(87|system)$/.test(r.scope)?' '+r.scope:''));
+ const roles=(ctx.roles||[]).filter(r=>r.role!=='maintainer').map(r=>(r.title||ROLE_LABELS[r.role]||r.role)+(r.scope&&!/^(87|system)$/.test(r.scope)?' '+r.scope:''));
  if(roles.length)card.append(node('p',roles.join(' · ')+(ctx.provisional?' (temporary access)':''),'hdg-setup-roles'));
  card.append(node('p','Your division is being set up in Hello Division G. Club information is ready; members and club officers are imported next.'));
  for(const d of ctx.divisions||[]){

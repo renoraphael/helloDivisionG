@@ -35,6 +35,7 @@ Scale Hello Division G (the owner's DTM project) to Hello Division K first, then
 | Club officer | Own club | Own club's members and club details |
 | Area Director | Own area | Own area, including roles in it |
 | Division Director | Own division | Own division, including roles in it |
+| Division council (Assistant Directors PQ / CG, TLI chair, division Administration and PR Managers, advisor, immediate past Director; title per person) | Own division | Nothing by default (read-only). The maintainer, a district admin or the Division Director can grant editing to one person (owner decision, 23 November 2026). Division-level Administration and PR Managers are this role, never the district AM / PRM. |
 | PRM, FM, LM (SDOs) | Roll-ups only | Their own area of work |
 | Administration Manager (AM) | All | Trio-like access (administration) |
 | District Trio (DD, PQD, CGD) | All | Everything, including district-scope items |
