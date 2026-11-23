@@ -154,7 +154,7 @@ def main():
     sql(foundation_sql())
 
     # Stand-in app files and the same per-file policies production uses.
-    for name in ('v645-community.html', 'v645-member.html', 'v646-community.html'):
+    for name in ('v645-community.html', 'v645-member.html', 'v646-community.html', 'v655-division-k.html'):
         body = f'<!doctype html><title>{name}</title>synthetic test file'.encode()
         request('POST', f'/storage/v1/object/hdg-private-app/{name}', secret, secret, body,
                 {'Content-Type': 'text/html', 'x-upsert': 'true'})
@@ -170,6 +170,8 @@ def main():
       ('community', 'v645', 'v645-community.html', true, now() - interval '1 day'),
       ('member', 'v645', 'v645-member.html', true, now() - interval '1 day'),
       ('community', 'v646', 'v646-community.html', false, null);
+    insert into public.hdg_releases(channel, division_code, version, file, is_current, made_current_at) values
+      ('division', 'K', 'v655', 'v655-division-k.html', true, now());
     """)
 
     LOCAL.parent.mkdir(exist_ok=True)

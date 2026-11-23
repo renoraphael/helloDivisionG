@@ -258,6 +258,27 @@ async function showMemberCommunity(data){
  document.write(html.replace(marker,()=> 'window.HDG_MEMBER_V632_CONTEXT='+context+';'+greeting));
  document.close();
 }
+/* Division apps (deployment/schema/013, build_division_app.py): a leader whose role is in a division other than
+   Division G opens that division's own build, when one is current and the division's data answers. Anything missing
+   (no build yet, no data feed, a file that is not a division build) keeps the "being set up" page. */
+async function openDivisionApp(){
+ let rel,data;
+ try{rel=await request('/rest/v1/rpc/hdg_current_release',{});}catch(_){return false;}
+ if(!rel||rel.channel!=='division'||!/^[A-Z]$/.test(rel.division||'')||rel.file!==rel.version+'-division-'+rel.division.toLowerCase()+'.html')return false;
+ try{data=await request('/rest/v1/rpc/hdg_division_community',{p_division:rel.division});}catch(_){return false;}
+ if(!data||typeof data!=='object')return false;
+ const label='Opening Hello Division '+rel.division+'…';
+ const m=el('hdg-auth-message');if(m)m.textContent=label;
+ const html=await fetchAppHtml(rel.file,appProgress(label));
+ const marker='/* HDG_MEMBER_V632_CONTEXT */';
+ if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)||!html.includes('"code": "'+rel.division+'"'))return false;
+ const context=JSON.stringify({account:session.user.id,community:data}).replace(/</g,'\\u003c');
+ global.HDG_ENTRY_LOADER=false;
+ document.open();
+ document.write(html.replace(marker,()=> 'window.HDG_MEMBER_V632_CONTEXT='+context+';'));
+ document.close();
+ return true;
+}
 /* Error reports to the maintainer (rule 32): at most 5 per page, each different, sent without the sign-in token.
    Emails and long numbers are removed here and again on the server; the page address is sent without ? or #. */
 (function(){
@@ -416,7 +437,7 @@ async function connect(){
    await showMemberCommunity(await request('/rest/v1/rpc/hdg_member_community',{}));
    return;
   }
-  if(mode==='setup'){showDivisionSetup(await request('/rest/v1/rpc/hdg_my_context',{}));return;}
+  if(mode==='setup'){if(await openDivisionApp())return;showDivisionSetup(await request('/rest/v1/rpc/hdg_my_context',{}));return;}
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
   el('hdg-auth-message').textContent='Opening Hello Division G…';

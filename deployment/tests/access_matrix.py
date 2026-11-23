@@ -427,6 +427,28 @@ check('the leadership directory lists district team members with their title', (
 check('the leadership directory still leaves out the maintainer', not any(x[0] == 'maintainer' for x in rows), '')
 check('a district team role gives no extra member records', seen_people('past_member') == {P['past_member']}, f"got {len(seen_people('past_member'))}")
 
+# ---------------------------------------------------------------- 013 division apps: only that division's leaders
+def fresh(r, f):
+    return request('GET', f'/storage/v1/object/authenticated/hdg-private-app/{f}?t={uuid.uuid4().hex[:8]}', KEY, T[r] or KEY)[0]
+s, rel = rpc('hdg_current_release', T['k_new'], {})
+check('a Division K leader is told to open the Division K app', isinstance(rel, dict) and rel.get('file') == 'v655-division-k.html' and rel.get('division') == 'K', str(rel)[:120])
+s, rel = rpc('hdg_current_release', T['council_k'], {})
+check('a Division K council member is told to open the Division K app', isinstance(rel, dict) and rel.get('division') == 'K', str(rel)[:120])
+for r in ('k_new', 'council_k'):
+    check(f'{r} can download the Division K app', fresh(r, 'v655-division-k.html') == 200, '')
+for r in ('admin', 'officer', 'member', 'dd_g', 'outsider', 'signed_out'):
+    check(f'{r} cannot download the Division K app', fresh(r, 'v655-division-k.html') != 200, '')
+s, rel = rpc('hdg_current_release', T['officer'], {})
+check('Division G leaders keep their own app', isinstance(rel, dict) and rel.get('channel') == 'community', str(rel)[:120])
+s, _ = rpc('hdg_add_division_release', T['dd_k'], {'p_division': 'K', 'p_version': 'v656', 'p_file': 'v656-division-k.html', 'p_sha256': None})
+check('only the maintainer can register a division app', s != 200, str(s))
+s, _ = rpc('hdg_clear_division_release', T['admin'], {'p_division': 'K'})
+s, rel = rpc('hdg_current_release', T['k_new'], {})
+check('with no current Division K app, the leader is told nothing (setup page stays)', rel in (None, ''), str(rel)[:80])
+check('with no current Division K app, its file cannot be downloaded', fresh('k_new', 'v655-division-k.html') != 200, '')
+s, _ = rpc('hdg_set_division_release', T['admin'], {'p_division': 'K', 'p_version': 'v655'})
+check('the maintainer can make the Division K app current again', s == 200, str(s))
+
 failed = [r for r in results if not r[0]]
 for ok, name, detail in results:
     print(('PASS ' if ok else 'FAIL ') + name + (f'  [{detail}]' if not ok and detail else ''))
