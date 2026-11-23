@@ -414,6 +414,19 @@ s, ctx = rpc('hdg_my_context', T['council_k'])
 check("the council member's setup page shows Division K and the title",
       isinstance(ctx, dict) and [x['code'] for x in ctx.get('divisions', [])] == ['K'] and any(r.get('title') for r in ctx.get('roles', [])), str(ctx)[:160])
 
+# ---------------------------------------------------------------- 012 district team: no member records, listed with a title
+s, tid = rpc('hdg_assign_role', T['dd_k'], {'p_person': P['past_member'], 'p_role': 'district_team', 'p_scope_code': '87', 'p_year': 2026})
+check('a Division Director cannot give district team roles', s != 200, str(s))
+s, tid = rpc('hdg_assign_role', T['am'], {'p_person': P['past_member'], 'p_role': 'district_team', 'p_scope_code': '87', 'p_year': 2026})
+check('a district admin can give a district team role', s == 200, str(tid)[:80])
+s, _ = rpc('hdg_set_role_title', T['am'], {'p_role_id': tid, 'p_title': 'Club Retention Chair'})
+check('a district admin can set the district team title', s in (200, 204), str(s))
+s, d = rpc('hdg_leadership_directory', T['member'], {})
+rows = {(x['role'], x.get('title')) for x in d} if isinstance(d, list) else set()
+check('the leadership directory lists district team members with their title', ('district_team', 'Club Retention Chair') in rows, str(rows)[:160])
+check('the leadership directory still leaves out the maintainer', not any(x[0] == 'maintainer' for x in rows), '')
+check('a district team role gives no extra member records', seen_people('past_member') == {P['past_member']}, f"got {len(seen_people('past_member'))}")
+
 failed = [r for r in results if not r[0]]
 for ok, name, detail in results:
     print(('PASS ' if ok else 'FAIL ') + name + (f'  [{detail}]' if not ok and detail else ''))
