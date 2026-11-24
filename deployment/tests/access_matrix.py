@@ -427,6 +427,49 @@ check('the leadership directory lists district team members with their title', (
 check('the leadership directory still leaves out the maintainer', not any(x[0] == 'maintainer' for x in rows), '')
 check('a district team role gives no extra member records', seen_people('past_member') == {P['past_member']}, f"got {len(seen_people('past_member'))}")
 
+# ---------------------------------------------------------------- 013 division apps: only that division's leaders
+def fresh(r, f):
+    return request('GET', f'/storage/v1/object/authenticated/hdg-private-app/{f}?t={uuid.uuid4().hex[:8]}', KEY, T[r] or KEY)[0]
+s, rel = rpc('hdg_current_release', T['k_new'], {})
+check('a Division K leader is told to open the Division K app', isinstance(rel, dict) and rel.get('file') == 'v655-division-k.html' and rel.get('division') == 'K', str(rel)[:120])
+s, rel = rpc('hdg_current_release', T['council_k'], {})
+check('a Division K council member is told to open the Division K app', isinstance(rel, dict) and rel.get('division') == 'K', str(rel)[:120])
+for r in ('k_new', 'council_k'):
+    check(f'{r} can download the Division K app', fresh(r, 'v655-division-k.html') == 200, '')
+for r in ('admin', 'officer', 'member', 'dd_g', 'outsider', 'signed_out'):
+    check(f'{r} cannot download the Division K app', fresh(r, 'v655-division-k.html') != 200, '')
+s, rel = rpc('hdg_current_release', T['officer'], {})
+check('Division G leaders keep their own app', isinstance(rel, dict) and rel.get('channel') == 'community', str(rel)[:120])
+s, _ = rpc('hdg_add_division_release', T['dd_k'], {'p_division': 'K', 'p_version': 'v656', 'p_file': 'v656-division-k.html', 'p_sha256': None})
+check('only the maintainer can register a division app', s != 200, str(s))
+s, _ = rpc('hdg_clear_division_release', T['admin'], {'p_division': 'K'})
+s, rel = rpc('hdg_current_release', T['k_new'], {})
+check('with no current Division K app, the leader is told nothing (setup page stays)', rel in (None, ''), str(rel)[:80])
+check('with no current Division K app, its file cannot be downloaded', fresh('k_new', 'v655-division-k.html') != 200, '')
+s, _ = rpc('hdg_set_division_release', T['admin'], {'p_division': 'K', 'p_version': 'v655'})
+check('the maintainer can make the Division K app current again', s == 200, str(s))
+
+# ---------------------------------------------------------------- 014 division data feed
+s, feed = rpc('hdg_division_community', T['k_new'], {'p_division': 'K'})
+clubs = {c['number']: c for c in feed.get('clubs', [])} if isinstance(feed, dict) else {}
+check('a Division K leader gets the Division K clubs only', set(clubs) == {'9000003', '9000004'}, str(sorted(clubs))[:80])
+check('each club carries its area and time zone label', clubs.get('9000003', {}).get('area') == 'K1' and clubs.get('9000003', {}).get('timezone') == 'MYT', str(clubs.get('9000003'))[:160])
+leaders = {(l['role'], l['scope']): l['name'] for l in feed.get('leaders', [])} if isinstance(feed, dict) else {}
+check('the feed names the Division Director and lists every area', leaders.get(('Division Director', 'K')) == 'Test K Director'
+      and ('Area Director', 'K1') in leaders and ('Area Director', 'K2') in leaders, str(leaders)[:200])
+check('the feed carries no emails', '@' not in str(feed), '')
+check('agenda names include Division K members only', isinstance(feed, dict) and all(m['clubNumber'] in ('9000003', '9000004') for m in feed.get('agendaMembers', []))
+      and len(feed.get('agendaMembers', [])) >= 1, str(len(feed.get('agendaMembers', []) if isinstance(feed, dict) else 0)))
+s, f2 = rpc('hdg_division_community', T['council_k'], {'p_division': 'K'})
+check('a Division K council member gets the feed', isinstance(f2, dict) and len(f2.get('clubs', [])) == 2, str(s))
+for r, div in (('dd_g', 'K'), ('member', 'K'), ('outsider', 'K'), ('k_new', 'G'), ('past_member', 'K')):
+    s, f3 = rpc('hdg_division_community', T[r], {'p_division': div})
+    check(f'{r} gets no Division {div} feed', f3 in (None, ''), str(f3)[:60])
+s, f4 = rpc('hdg_division_community', None, {'p_division': 'K'})
+check('signed-out visitors get no feed', s != 200 or f4 in (None, ''), str(s))
+s, f5 = rpc('hdg_division_community', T['admin'], {'p_division': 'K'})
+check('the maintainer can read the feed', isinstance(f5, dict) and len(f5.get('clubs', [])) == 2, str(s))
+
 failed = [r for r in results if not r[0]]
 for ok, name, detail in results:
     print(('PASS ' if ok else 'FAIL ') + name + (f'  [{detail}]' if not ok and detail else ''))
