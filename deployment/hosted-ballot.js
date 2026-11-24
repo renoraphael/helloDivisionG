@@ -103,4 +103,87 @@
  };
  // The published vote page uses its own server-backed form.
  window.meetingBallotSubmitPublic=window.meetingBallotOpenPublicPreview;
+
+ // v659: votes cast on phones through the voting link count together with ballots entered on this device,
+ // in the Ballot Counter's private results and in the result slides. Matched by candidate name, so a later
+ // change to the candidate order cannot move votes to the wrong person. Disqualified speakers stay at zero.
+ const norm=value=>String(value||'').toLowerCase().replace(/\s+/g,' ').trim();
+ function linkCounts(record,category){
+  const state=record&&drafts.get(record.id);
+  if(!state)return null;
+  const names=new Map((state.choices?.[category]||[]).map(choice=>[String(choice.id),choice.name]));
+  const out=new Map();
+  for(const [id,count] of Object.entries(state.counts?.[category]||{})){
+   const name=names.get(String(id));
+   if(id&&name)out.set(norm(name),(out.get(norm(name))||0)+Number(count||0));
+  }
+  return out;
+ }
+ const baseTally=window.meetingBallotTallyFor;
+ if(typeof baseTally==='function'){
+  window.meetingBallotTallyFor=function(record,category){
+   const rows=baseTally.apply(this,arguments),extra=linkCounts(record,category);
+   if(!extra||!extra.size)return rows;
+   return rows.map(row=>{
+    const add=row.timing?.qualified===false?0:(extra.get(norm(row.name))||0);
+    return add?{...row,count:row.count+add,linkCount:add}:row;
+   }).sort((a,b)=>{
+    const aOut=a.timing?.qualified===false,bOut=b.timing?.qualified===false;
+    if(aOut!==bOut)return aOut?1:-1;
+    return b.count-a.count||String(a.name).localeCompare(String(b.name));
+   });
+  };
+ }
+ const baseCard=window.meetingBallotTallyCard;
+ if(typeof baseCard==='function'){
+  window.meetingBallotTallyCard=function(record){
+   const html=baseCard.apply(this,arguments),state=record&&drafts.get(record.id);
+   if(!state||!state.responses)return html;
+   const here=agendaMeetingToolData(record)?.ballots?.length||0;
+   return html.replace(/<strong>\d+ ballots entered<\/strong>/,
+    '<strong>'+(here+state.responses)+' ballots entered</strong><small>'+here+' on this device · '+state.responses+' by voting link</small>');
+  };
+ }
+ let refreshing=false,rerendering=false;
+ async function refreshLinkVotes(){
+  const record=communityAgendaCurrentRecord();
+  if(!record||refreshing||working.has(record.id)||!window.HDGCloud?.manageBallot)return;
+  refreshing=true;
+  try{
+   const state=await HDGCloud.manageBallot(record.id,'status');
+   if(state)drafts.set(record.id,state);else drafts.delete(record.id);
+  }catch(_){return;}
+  finally{refreshing=false;}
+  if(communityAgendaCurrentRecord()?.id!==record.id)return;
+  rerendering=true;
+  try{
+   if(typeof renderMeetingBallot==='function')renderMeetingBallot(record);
+   try{if(typeof syncAgendaPresentationResults==='function')syncAgendaPresentationResults(record);}
+   catch(error){console.warn('Result slides not refreshed',error);}
+  }finally{rerendering=false;}
+ }
+ const baseToggle=window.meetingBallotTogglePrivateResults;
+ if(typeof baseToggle==='function'){
+  // Every ballot render re-applies this toggle, so refresh only when the panel goes from hidden to shown.
+  window.meetingBallotTogglePrivateResults=function(show){
+   const wasHidden=document.getElementById('meetingBallotResultsPrivate')?.hidden!==false;
+   const out=baseToggle.apply(this,arguments);
+   if(show&&wasHidden&&!rerendering)refreshLinkVotes();
+   return out;
+  };
+ }
+ // While the private results are open, pick up new phone votes every 10 seconds.
+ setInterval(()=>{
+  const panel=document.getElementById('meetingBallotResultsPrivate');
+  if(panel&&!panel.hidden&&!document.hidden)refreshLinkVotes();
+ },10000);
+ // "Refresh link & tally" also updates the private results.
+ const baseManage=manage;
+ window.meetingBallotRefreshLinkVotes=refreshLinkVotes;
+ const basePublic=window.renderMeetingBallotPublicSession;
+ window.renderMeetingBallotPublicSession=function(record){
+  basePublic.apply(this,arguments);
+  const button=[...(document.getElementById('meetingBallotPublicSession')?.querySelectorAll('button')||[])].find(b=>b.textContent==='Refresh link & tally');
+  if(button)button.onclick=async()=>{await baseManage(record,'status');refreshLinkVotes();};
+ };
 })();
