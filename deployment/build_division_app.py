@@ -41,6 +41,7 @@ with tempfile.TemporaryDirectory() as tmp:
     if run.returncode:
         sys.exit('Member build failed: ' + (run.stderr or run.stdout)[-1500:])
     s = member.read_text(encoding='utf-8')
+MEMBER_SCRIPT_ENDS = s.count('</script>')
 
 def rep(old, new, n=1):
     global s
@@ -48,11 +49,15 @@ def rep(old, new, n=1):
     assert c == n, f'{c} != {n}: {old[:90]}'
     s = s.replace(old, new)
 
-def cut_function(name, replacement):
-    """Replace a top-level function (up to the next top-level function) with a short replacement."""
+def cut_function(name, replacement, end_marker='\nfunction '):
+    """Replace a top-level function, up to the next top-level function (or end_marker), with a short replacement.
+    Stops if the removed part contains any other top-level code."""
     global s
+    assert s.count(f'\nfunction {name}(') == 1, name
     i = s.index(f'\nfunction {name}(')
-    j = s.index('\nfunction ', i + 10)
+    j = s.index(end_marker, i + 10)
+    removed = s[i + 1:j]
+    assert not re.search(r'\n(const |let |var |window\.|\(function|</script>|<script)', removed), f'{name}: cut would remove other code'
     s = s[:i] + '\n' + replacement + s[j:]
 
 # ---------------------------------------------------------------- 2. generic designs only
@@ -97,6 +102,37 @@ i = s.index("  bsc:{name:'Bali Speakers Club'"); j = s.index("  universal:{name:
 s = s[:i] + s[j:]
 rep("universal:{name:'Universal Division G'", "universal:{name:'Universal'")
 
+# Slides: only the generic deck. The two clubs' own decks (Bali Speakers Club, Bali Toastmasters Club) are removed.
+def remove_script(sid):
+    global s
+    i = s.index(f'<script id="{sid}">'); j = s.index('</script>', i) + len('</script>')
+    s = s[:i] + s[j:]
+remove_script('v481-bsc-canva-flow')
+remove_script('v516-btc-slides')
+cut_function('bscSlideSvgV469', "function bscSlideSvgV469(record,item){return '';}", end_marker='\n(function(){')
+rep("function agendaPresentationTemplate(record){", "function agendaPresentationTemplate(record){return 'universal';")
+s, n = re.subn(r'\s*<option value="(bsc|btc)">[^<]*</option>(?=[\s\S]{0,400}<option value="universal">)', '', s)
+assert n == 2, 'slide template options'
+
+# Calendar groups: the division's areas (from its clubs at sign-in) instead of Division G's islands.
+rep("const COMMUNITY_REGION_VALUES=['east-java','bali','kalimantan','sulawesi','online'];",
+    "const COMMUNITY_REGION_VALUES=[...new Set(((window.HDG_MEMBER_V632_DATA||{}).clubs||[]).map(c=>String(c.area||'')).filter(Boolean))].sort();")
+cut_function('clubCalendarRegion', "function clubCalendarRegion(c,p){return String(c?.area||'');}")
+cut_function('eventCalendarRegion', "function eventCalendarRegion(obj={}){if(obj.region&&COMMUNITY_REGION_VALUES.includes(obj.region))return obj.region;"
+             "if(obj.clubNumber){const c=specialMeetingClub(obj.clubNumber);if(c)return clubCalendarRegion(c);}return '';}")
+i = s.index('<span class="calendar-region-filter-label">Show clubs</span>'); j = s.index('</div>', i)
+s = s[:i] + '<span class="calendar-region-filter-label">Show areas</span>' + s[j:]
+_body = s.rindex('</body>')  # the document's own </body> is the last one; print templates contain earlier ones
+s = s[:_body] + """<script id="hdg-division-areas">(function(){
+ /* Area checkboxes for the division's calendar, built from its own clubs. */
+ function fill(){const box=document.getElementById('calendarRegionFilter');if(!box||box.dataset.areas)return;box.dataset.areas='1';
+  COMMUNITY_REGION_VALUES.forEach(code=>{const l=document.createElement('label'),i=document.createElement('input'),t=document.createElement('span');
+   i.type='checkbox';i.value=code;i.checked=true;i.addEventListener('change',()=>onCalendarRegionFilterChange());t.textContent='Area '+code;l.append(i,t);box.append(l);});
+  try{syncCalendarRegionControls();}catch(_){}}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fill);else fill();
+})();</script>
+""" + s[_body:]
+
 # Club logos: emptied.
 for var in CLUB_LOGOS:
     s, n = re.subn(r'(window\.' + var + r'=)"data:image/[^"]*"', r'\1""', s)
@@ -132,9 +168,9 @@ def relabel(t):
     t = t.replace('DIVISION G', D['name'].upper()).replace('WITA', D['tz'])
     return t
 s = ''.join(relabel(t) if k == 't' else t for k, t in parts)
-# Division G's island groups, Indonesia map and WIB toggle do not apply: hidden (all of the division's clubs show,
-# times in the division's zone). A map and area groups built from the division's own clubs come later.
-s = s.replace('</head>', '<style id="hdg-division-hide">.calendar-region-filter,#calendarTimezoneWIB,#communityViewMap{display:none!important}</style>\n</head>', 1)
+# Division G's Indonesia map and WIB toggle do not apply: hidden. (The calendar groups by area, above.)
+_head = s.index('</head>'); assert s.find('<body', _head) - _head < 40, 'document head'
+s = s[:_head] + '<style id="hdg-division-hide">#calendarTimezoneWIB,#communityViewMap{display:none!important}</style>\n' + s[_head:]
 s = s.replace('<head>', '<head>\n<script id="hdg-division-build">window.HDG_DIVISION_BUILD=' + json.dumps(
     {'code': code, 'name': D['name'], 'timezone': D['tz'], 'currency': D['currency'],
      'generic': {'posters': GENERIC_POSTERS, 'agendas': GENERIC_AGENDAS}}) + ';</script>', 1)
@@ -152,11 +188,19 @@ if re.search(r'"club":"(?!All divisions)', s[s.index('BUILTIN='):s.index('BUILTI
 for table in ('TLI_V252_CONFIRMED', 'DIVISION_G_CANONICAL_DATA'):
     if re.search(r'const ' + table + r'=\{\n', text):
         problems.append('Division G data table ' + table)
+for sid in ('v481-bsc-canva-flow', 'v516-btc-slides'):
+    if f'<script id="{sid}">' in s:
+        problems.append('club slide deck ' + sid)
+if 'east-java' in text[text.find('const COMMUNITY_REGION_VALUES='):text.find('const COMMUNITY_REGION_VALUES=') + 200]:
+    problems.append('Division G island groups')
 if "bsc:{name:'Bali Speakers Club'" in text:
     problems.append('club slide theme')
 for label in ('Division G', 'DIVISION G', 'WITA'):
     if label in text:
         problems.append(f'label {label!r} x{text.count(label)}')
+# script structure: the Member build's closing tags, minus the 2 club slide scripts, plus the 2 added scripts
+if s.count('</script>') != MEMBER_SCRIPT_ENDS - 2 + 2:
+    problems.append(f"script tags changed unexpectedly ({MEMBER_SCRIPT_ENDS} -> {s.count('</script>')})")
 if problems:
     sys.exit('Audit failed: ' + '; '.join(problems))
 # Club names that remain only as public district directory data or neutral code conditions are reported, not built in.
