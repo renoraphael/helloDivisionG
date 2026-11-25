@@ -14,6 +14,12 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
+## v662 sync recovery fix (25 November 2026), built, not live
+- Cause of the stuck leader saves (20-25 Nov): the owner's usual browser recovered an unsynced draft at sign-in, which set queue.conflict and paused every save; SyncQueue.enqueue then overwrote the conflict status with "waiting to sync" (kind ok), hiding the pill. Owner downloaded the draft on 25 Nov; it matched shared revision 25 (nothing lost; the 24 Nov meeting with 11 times, 1 ballot, 4 topics is in shared state and in hdg_meetings).
+- docs/cloud-sync.js: newest draft first; a draft equal to the shared copy (sorted keys, built-in logo assets ignored) is cleared; a draft on the current revision is applied on screen and sent; otherwise the choice as before. Older drafts are copied to cloud-recovery-* before clearing. enqueue keeps the conflict status.
+- Tested in the test project (browser pane): equal draft cleared, current-revision draft sent (rev 1007, 1008), older-base draft asks and the warning survives a new edit, older draft kept in recovery.
+- Going live: upload v662 leader/member, storage-policy-v662.sql, release switch, merge for the launcher. Owner approval needed.
+
 ## v661 meeting rights (25 November 2026), LIVE
 - Owner approved "make it live" on 25 Nov 2026. 015 and 016 applied to production in one transaction after a rolled-back dry run; permission diff: only hdg_meetings_list, hdg_my_meeting_access and hdg_save_meeting granted to authenticated, no anon grants, the table has no direct grants.
 - v661 leader and member files (and .gz) uploaded and verified by download; storage-policy-v661.sql applied; hdg_releases current = v661 for community and member. Real-account check: the leader account reads only the leader file, the member account only the member file, both can list meetings.
