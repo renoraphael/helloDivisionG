@@ -1,0 +1,49 @@
+--- a/ios/Hello Division G Beta/ContentView.swift
++++ b/ios/Hello Division G Beta/ContentView.swift
+@@ -2,18 +2,33 @@
+ 
+ struct ContentView: View {
+     @State private var repository = AppRepository()
++    @State private var cloud = HDGCloudSession()
+     @AppStorage("previewProfileID") private var profileID = "division-director"
+ 
+     var body: some View {
+-        AppShell(repository: repository, profileID: $profileID)
+-            .tint(Brand.accent)
+-            .preferredColorScheme(.dark)
++        Group {
++            if cloud.authorized {
++                AppShell(repository: repository, profileID: $profileID, cloud: cloud)
++            } else {
++                NavigationStack { HDGSyncSignIn(repository: repository, cloud: cloud) }
++            }
++        }
++        .tint(Brand.accent)
++        .preferredColorScheme(.dark)
++        .task {
++            while !Task.isCancelled {
++                try? await Task.sleep(for: .seconds(45))
++                if Task.isCancelled { break }
++                await cloud.checkAccess()
++            }
++        }
+     }
+ }
+ 
+ struct AppShell: View {
+     @Bindable var repository: AppRepository
+     @Binding var profileID: String
++    @Bindable var cloud: HDGCloudSession
+     @State private var preferenceRevision = 0
+ 
+     private var profile: PreviewProfile { Profiles.byID(profileID) }
+@@ -21,6 +36,9 @@
+ 
+     var body: some View {
+         TabView {
++            Tab("Sync", systemImage: "arrow.triangle.2.circlepath") {
++                NavigationStack { HDGSyncSettings(repository: repository, cloud: cloud) }
++            }
+             if profile.role != .member {
+                 Tab("Overview", systemImage: "chart.bar.xaxis") { NavigationStack { TodayView(repository: repository, profile: profile).appChrome(profileID: $profileID, preferenceRevision: $preferenceRevision, repository: repository) } }
+                 Tab("Directory", systemImage: "person.3.fill") { NavigationStack { DirectoryWorkspaceView(repository: repository, profile: profile).appChrome(profileID: $profileID, preferenceRevision: $preferenceRevision, repository: repository) } }
