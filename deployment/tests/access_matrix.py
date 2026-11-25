@@ -128,7 +128,8 @@ if s == 200:
     responses = st.get('responses') if isinstance(st, dict) else None
     check('a vote sent twice from one browser counts once', s1 == 200 and s2 == 200 and responses == 1, f'{responses}')
     s, st = rpc('hdg_manage_ballot', T['admin'], {'p_meeting_id': MEETING, 'p_action': 'status'})
-    check("another leader cannot read this officer's ballot count", st in (None, '') or (isinstance(st, dict) and st.get('token') != tok), str(s))
+    # 015: a meeting has one ballot, so another leader sees the same count (owner request 25 November 2026).
+    check("another leader sees the same meeting's ballot count", isinstance(st, dict) and st.get('token') == tok and st.get('responses') == 1, str(s))
     rpc('hdg_manage_ballot', T['officer'], {'p_meeting_id': MEETING, 'p_action': 'close'})
     s, o = rpc('hdg_open_ballot', None, {'p_token': tok})
     check('a closed ballot link no longer opens', o in (None, ''), str(s))
@@ -469,6 +470,98 @@ s, f4 = rpc('hdg_division_community', None, {'p_division': 'K'})
 check('signed-out visitors get no feed', s != 200 or f4 in (None, ''), str(s))
 s, f5 = rpc('hdg_division_community', T['admin'], {'p_division': 'K'})
 check('the maintainer can read the feed', isinstance(f5, dict) and len(f5.get('clubs', [])) == 2, str(s))
+
+# ---------------------------------------------------------------- 015 meetings: one record per meeting, role takers per meeting
+from test_env import sql
+sql("delete from public.hdg_meetings where club_number in ('9000001', '9000002', '9000003'); "
+    "delete from hdg_community_private.votes where ballot_id in (select id from hdg_community_private.ballots where meeting_id like 'agenda-9000001-%'); "
+    "delete from hdg_community_private.ballots where meeting_id like 'agenda-9000001-%'; "
+    "update public.hdg_people set nickname = null where nickname = 'Twin'")
+TODAY = sql("select hdg_sync_private.today()::text d")[0]['d']
+MID = f'agenda-9000001-{TODAY}'
+# Role takers hold no standing role over the club: a former Area Director, a member from another area's scope, a past member.
+ROLES_TODAY = {'timer': 'Test Past Ad', 'ballotCounter': 'Test Cross (BTC)', 'tom': 'Test Past Member', 'ttm': 'Test Officer'}
+def save_meeting(r, mid, patch, expected=None, date=TODAY):
+    return rpc('hdg_save_meeting', T[r], {'p_meeting_id': mid, 'p_meeting_date': date, 'p_patch': patch, 'p_expected_updated_at': expected})
+s, first = save_meeting('officer', MID, {'agenda': {'theme': 'Courage', 'roles': ROLES_TODAY}, 'downloaded': True})
+check('a Division G leader saves a new meeting under its meeting code', s == 200 and first.get('applied') and first.get('created'), str(first)[:120])
+s, again = save_meeting('officer', MID, {'agenda': {'theme': 'Courage, updated', 'roles': ROLES_TODAY}}, first.get('updated_at'))
+check('saving the same meeting again updates the same record', s == 200 and again.get('applied') and not again.get('created'), str(again)[:120])
+n = sql(f"select count(*)::int n, bool_and(first_downloaded_at is not null) d from public.hdg_meetings where meeting_id = '{MID}'")[0]
+check('one record per meeting, first download recorded', n['n'] == 1 and n['d'], str(n))
+for r in ('outsider', 'member_k', 'signed_out'):
+    s, _ = rpc('hdg_save_meeting', T[r], {'p_meeting_id': MID, 'p_meeting_date': TODAY, 'p_patch': {'agenda': {}}, 'p_expected_updated_at': None})
+    check(f'{r} cannot save the meeting', s != 200, str(s))
+s, acc = rpc('hdg_my_meeting_access', T['past_ad'], {'p_meeting_id': MID})
+check('today\'s Timer gets the timer and nothing else', isinstance(acc, dict) and acc.get('canSaveTimer') and not acc.get('canSaveBallots')
+      and not acc.get('canEditAgenda') and not acc.get('canSeeResults'), str(acc)[:200])
+s, acc = rpc('hdg_my_meeting_access', T['cross'], {'p_meeting_id': MID})
+check('today\'s Ballot Counter (name with a club suffix) gets the ballot and results', isinstance(acc, dict) and acc.get('canSaveBallots')
+      and acc.get('canSeeResults') and not acc.get('canSaveTimer'), str(acc)[:200])
+s, acc = rpc('hdg_my_meeting_access', T['past_member'], {'p_meeting_id': MID})
+check('the Toastmaster of the Meeting sees results but saves nothing', isinstance(acc, dict) and acc.get('canSeeResults') and not acc.get('canSaveBallots'), str(acc)[:200])
+cur = again.get('updated_at')
+s, t1 = save_meeting('past_ad', MID, {'timer_log': [{'id': 'time-1', 'person': 'Speaker', 'seconds': 400}]}, cur)
+check('the Timer saves the timer times', s == 200 and t1.get('applied'), str(t1)[:120])
+s, b1 = save_meeting('cross', MID, {'ballots': [{'id': 'ballot-1', 'prepared': 'p0'}]}, cur)
+check('the Ballot Counter saves at the same time without overwriting the timer (both kept)', s == 200 and b1.get('applied') and not b1.get('set_aside'), str(b1)[:120])
+row = sql(f"select jsonb_array_length(timer_log) t, jsonb_array_length(ballots) b from public.hdg_meetings where meeting_id = '{MID}'")[0]
+check('timer times and ballots are both in the meeting', row == {'t': 1, 'b': 1}, str(row))
+for r, patch in (('past_ad', {'ballots': []}), ('past_ad', {'agenda': {}}), ('cross', {'timer_log': []}), ('past_member', {'ballots': []}), ('past_ad', {'downloaded': True})):
+    s, _ = save_meeting(r, MID, patch, None)
+    check(f'{r} cannot save {list(patch)[0]} (another role\'s part)', s != 200, str(s))
+s, late = save_meeting('officer', MID, {'agenda': {'theme': 'Late copy', 'roles': ROLES_TODAY}}, first.get('updated_at'))
+row = sql(f"select agenda->>'theme' t from public.hdg_meetings where meeting_id = '{MID}'")[0]
+check('a late agenda save answers normally, keeps the newer agenda and sets the late one aside', s == 200 and late.get('set_aside') == ['agenda']
+      and row['t'] == 'Courage, updated', f'{late} {row}')
+s, lst = rpc('hdg_meetings_list', T['past_ad'], {'p_meeting_id': MID})
+check('the Timer reads the meeting but not the ballots', isinstance(lst, list) and len(lst) == 1 and lst[0]['ballots'] == [] and lst[0]['myRoles'] == ['timer'], str(lst)[:160])
+s, lst = rpc('hdg_meetings_list', T['cross'], {'p_meeting_id': MID})
+check('the Ballot Counter reads the ballots', isinstance(lst, list) and len(lst) == 1 and len(lst[0]['ballots']) == 1, str(lst)[:160])
+s, lst = rpc('hdg_meetings_list', T['outsider'], {})
+check('an outsider reads no meetings', lst == [], str(lst)[:80])
+s, lst = rpc('hdg_meetings_list', T['dd_g'], {'p_club': '00009000001'})
+check('a Division Director reads the club\'s meetings (leading zeros ignored)', isinstance(lst, list) and len(lst) == 1, str(lst)[:80])
+# Next meeting, different role takers: last week's Timer has no function in it.
+NEXT = sql("select (hdg_sync_private.today())::text d")[0]['d']
+MID2 = f'agenda-9000001-{NEXT}-b'
+save_meeting('officer', MID2, {'agenda': {'roles': {'timer': 'Test Cross', 'ballotCounter': 'Test Past Ad'}}})
+s, acc = rpc('hdg_my_meeting_access', T['past_ad'], {'p_meeting_id': MID2})
+check('roles follow each meeting: the same member is Ballot Counter in another meeting', isinstance(acc, dict) and acc.get('canSaveBallots') and not acc.get('canSaveTimer'), str(acc)[:160])
+OLD = sql("select (hdg_sync_private.today() - 10)::text d")[0]['d']
+MID3 = f'agenda-9000001-{OLD}'
+save_meeting('officer', MID3, {'agenda': {'roles': {'timer': 'Test Past Ad'}}}, None, OLD)
+s, acc = rpc('hdg_my_meeting_access', T['past_ad'], {'p_meeting_id': MID3})
+check('a role in a meeting 10 days ago no longer works', isinstance(acc, dict) and not acc.get('canSaveTimer'), str(acc)[:160])
+sql(f"update public.hdg_people set nickname = 'Twin' where id in ('00000000-0000-4000-8000-000000000009', '00000000-0000-4000-8000-000000000001')")
+MID4 = f'agenda-9000001-{TODAY}-twin'
+save_meeting('officer', MID4, {'agenda': {'roles': {'timer': 'Twin'}}})
+s, acc = rpc('hdg_my_meeting_access', T['cross'], {'p_meeting_id': MID4})
+check('a name that fits two members gives nobody the role', isinstance(acc, dict) and not acc.get('canSaveTimer'), str(acc)[:160])
+sql("update public.hdg_people set nickname = null where nickname = 'Twin'")
+# Phone votes: one ballot per meeting, whoever publishes.
+CH = {'prepared': [{'id': 'p0', 'name': 'Speaker One'}], 'evaluation': [], 'topics': []}
+s, pub = rpc('hdg_manage_ballot', T['officer'], {'p_meeting_id': MID, 'p_action': 'publish', 'p_title': 'Test ballot', 'p_choices': CH})
+check('a leader publishes the meeting\'s voting link', s == 200 and isinstance(pub, dict) and pub.get('token'), str(pub)[:120])
+s, pub2 = rpc('hdg_manage_ballot', T['dd_g'], {'p_meeting_id': MID, 'p_action': 'publish', 'p_title': 'Test ballot', 'p_choices': CH})
+check('publishing again from another account keeps the same link', isinstance(pub2, dict) and pub2.get('token') == pub.get('token'), str(pub2)[:120])
+token_id = pub.get('token') if isinstance(pub, dict) else None
+s, _ = rpc('hdg_cast_ballot', None, {'p_token': token_id, 'p_browser_id': str(uuid.uuid4()), 'p_choices': {'prepared': 'p0', 'evaluation': '', 'topics': ''}})
+for r in ('cross', 'past_member', 'dd_g'):
+    s, st = rpc('hdg_manage_ballot', T[r], {'p_meeting_id': MID, 'p_action': 'status'})
+    check(f'{r} sees the phone votes of the meeting', isinstance(st, dict) and st.get('responses') == 1, f'{s} {str(st)[:100]}')
+for r in ('past_ad', 'outsider', 'member_k'):
+    s, st = rpc('hdg_manage_ballot', T[r], {'p_meeting_id': MID, 'p_action': 'status'})
+    check(f'{r} cannot see the phone votes', s != 200, str(s))
+s, _ = rpc('hdg_manage_ballot', T['past_member'], {'p_meeting_id': MID, 'p_action': 'close'})
+check('the Toastmaster of the Meeting cannot close voting', s != 200, str(s))
+s, op = rpc('hdg_open_ballot', None, {'p_token': token_id})
+check('the voting link opens for phones without sign-in', isinstance(op, dict) and op.get('title'), str(op)[:80])
+s, cl = rpc('hdg_manage_ballot', T['cross'], {'p_meeting_id': MID, 'p_action': 'close'})
+check('the Ballot Counter can close voting', isinstance(cl, dict) and cl.get('open') is False, str(cl)[:100])
+sql("delete from public.hdg_meetings where club_number = '9000001'; "
+    "delete from hdg_community_private.votes where ballot_id in (select id from hdg_community_private.ballots where meeting_id like 'agenda-9000001-%'); "
+    "delete from hdg_community_private.ballots where meeting_id like 'agenda-9000001-%'")
 
 failed = [r for r in results if not r[0]]
 for ok, name, detail in results:

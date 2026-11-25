@@ -32,6 +32,7 @@ python3 deployment/tests/club_import_check.py    # club CSV import on synthetic 
 | 012_district_team_directory.sql | District team members (with titles) in the leadership directory; still no member records | test; **production, applied 23 November 2026** |
 | 013_division_releases.sql | Release slots for division apps (channel `division` + division code), download only for that division's leaders, launcher routing | test; production waits for approval |
 | 014_division_community.sql | Data a division app receives at sign-in (`hdg_division_community`): clubs, DCP goals, officers, leaders, agenda names in read scope; no emails | test; production waits for approval |
+| 015_meetings.sql | One record per club meeting under its meeting code (agenda, timer times, typed-in ballots, Table Topics names, first download); role takers from that meeting's agenda (Timer, Ballot Counter, TTM, Toastmaster) matched by name, unique names only, from the day before to the day after; one phone ballot per meeting; voting links work whoever published them | test; production waits for approval |
 
 The setup script writes the synthetic test passwords and the test project's publishable key to `local-data/test-project.json` (git-ignored). Both scripts refuse the production project.
 
