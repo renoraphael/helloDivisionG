@@ -32,7 +32,7 @@ Scale Hello Division G (the owner's DTM project) to Hello Division K first, then
 | Role | Member records visible | Can edit |
 |---|---|---|
 | Member | Own | Own profile (nickname, aliases, photo, pronunciation) |
-| Club officer | Own club | Own club's members and club details |
+| Club officer | Own club | Own club's members and club details, and its own Exco seats (owner decision, 25 November 2026: any current officer of the club, effective at once without Area Director confirmation; a Toastmasters officer list replaces a club's change only if the list is dated after it) |
 | Area Director | Own area | Own area, including roles in it |
 | Division Director | Own division | Own division, including roles in it |
 | Division council (Assistant Directors PQ / CG, TLI chair, division Administration and PR Managers, advisor, immediate past Director; title per person) | Own division | Nothing by default (read-only). The maintainer, a district admin or the Division Director can grant editing to one person (owner decision, 23 November 2026). Division-level Administration and PR Managers are this role, never the district AM / PRM. |

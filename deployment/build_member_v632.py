@@ -41,7 +41,8 @@ assert sha256(original).hexdigest() in (
  "76842a769b1808e6f34c65699414a3395ae74fb73c252d02b14a22dd019fba62",
  "cf7a76bbc3faf48a25197482782852e48498f306f835d69d62e1f0c48c1e8c85",
  "917761b8950565b2f165b3d83a7d14acc30dc7b1c6f614adb82dbfae26f25170",
- "c336bc218914e3c9fb3db6c9c63630d260e3232bcf1c79d9fb6071568b7a7d1f")
+ "c336bc218914e3c9fb3db6c9c63630d260e3232bcf1c79d9fb6071568b7a7d1f",
+ "60d548c8ccf5d4c7b388c7c9980714cbc30c24147b0ea041e6713f21fcafaa67")
 source=original.decode()
 known_rows=[]
 for key in ('memberRecords','officerRecords'):
@@ -447,6 +448,12 @@ if release and int(release.group(1))>=660:
  before,close,after=source.rpartition('</body>')
  assert close,'Expected a closing body tag.'
  source=before+'<script id="hdg-hosted-meetings">'+meetings_js+'</script>\n'+close+after
+# From v664 club officers manage their club's Exco from a Community tab (deployment/club-exco.js, schema 017).
+if release and int(release.group(1))>=664:
+ exco_js=(root/'deployment/club-exco.js').read_text()
+ assert '</script' not in exco_js.lower()
+ before,close,after=source.rpartition('</body>')
+ source=before+'<script id="hdg-club-exco">'+exco_js+'</script>\n'+close+after
 args.output.parent.mkdir(parents=True,exist_ok=True)
 args.output.write_text(source)
 print('Local staging build:',len(source),'characters')
