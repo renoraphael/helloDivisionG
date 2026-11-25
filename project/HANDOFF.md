@@ -14,6 +14,15 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
+## v663 pop-up editors (25 November 2026), built, not live
+- Owner request: the TLI, contest and club editors were hard to use and opened at the top of the page. deployment notes: the new code is one block, `<script id="v663-event-editors">` and its style, added before </body> of the offline file (source: deployment/app-patches/v663/editors.js and editors.css; `python3 deployment/app-patches/make_v663.py <v662 file> <out> <v662 sha256>` rebuilds the offline file).
+- Shared <dialog> editor (`#v663Editor` for TLI and contests, `#v663ClubDlg` wraps the existing #clubForm so its own save handler still runs). Overrides window.editTli, openTliEditorNew, editContest, editClub, renderTlis and renderContestSchedule; the old <details> editors are hidden (class v663-retired).
+- TLI attendance writes officerRecords[].tli1/tli2 for every seat of a person (key: club number + memberId or name) and, for main sessions, recounts the session's officers when attendance changed. Area directors only see their own Area's officers.
+- Club save fix: fields missing from the form's object are restored after the original handler; non-listed select values (mode "Inactive") are added as options instead of being blanked.
+- Production data on 25 Nov (owner request, through the signed-in leader app, revision 28): Main TLI 2 — Surabaya marked Completed (24 attended, 4 clubs, 13 officers; 16 seats tli2=true, other 40 G1/G2 seats false), as the v615 one-off had only ever run offline (the hosted build strips it). Area contest dates 21 Mar 2027 (G1 & G2) and 27 Mar 2027 (G3 & G4); Division contest Chair Dyah Noormila Putri, Chief Judge Christopher Halim.
+- Tested: offline file in the browser pane (desktop, phone width, classic and maroon themes): TLI save and revert, attendance count, contest readiness, club save keeps all fields; hosted leader build against the test project: contest added and deleted through the editor, synced (rev 1009 to 1011). No console errors.
+- Going live: upload v663 leader/member (.gz too), storage-policy-v663.sql, release switch, merge for the launcher. Owner approval needed.
+
 ## v662 sync recovery fix (25 November 2026), LIVE
 - Owner approved "live and merge" on 25 Nov 2026: v662 leader/member files and .gz uploaded and verified by download, storage-policy-v662.sql applied, hdg_releases current = v662; real leader and member accounts each read only their own file.
 - Cause of the stuck leader saves (20-25 Nov): the owner's usual browser recovered an unsynced draft at sign-in, which set queue.conflict and paused every save; SyncQueue.enqueue then overwrote the conflict status with "waiting to sync" (kind ok), hiding the pill. Owner downloaded the draft on 25 Nov; it matched shared revision 25 (nothing lost; the 24 Nov meeting with 11 times, 1 ballot, 4 topics is in shared state and in hdg_meetings).
