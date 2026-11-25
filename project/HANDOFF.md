@@ -14,7 +14,11 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
-## v661 meeting rights (25 November 2026), not live
+## v661 meeting rights (25 November 2026), LIVE
+- Owner approved "make it live" on 25 Nov 2026. 015 and 016 applied to production in one transaction after a rolled-back dry run; permission diff: only hdg_meetings_list, hdg_my_meeting_access and hdg_save_meeting granted to authenticated, no anon grants, the table has no direct grants.
+- v661 leader and member files (and .gz) uploaded and verified by download; storage-policy-v661.sql applied; hdg_releases current = v661 for community and member. Real-account check: the leader account reads only the leader file, the member account only the member file, both can list meetings.
+- Division K file not uploaded (013/014 still wait for production).
+- The Member app needs the launcher from this PR (docs/cloud-sync.js saveMeeting); until GitHub Pages serves it, the meeting sync stays off in the Member app.
 - deployment/schema/016_meeting_rights.sql (test project only): meeting_rights() per meeting; merge_own_agenda() keeps the stored agenda and takes over only the person's own changes (their role spelling, an empty role set to them, their speaker line or evaluator part, a new speaker line in their name); helpers' ballots are appended under the row lock and never count as late. hdg_meetings_list returns `rights` per meeting; saves return `trimmed`.
 - hosted-meetings.js follows `rights`: sends only allowed parts, adopts the stored agenda after a trimmed save (local copy kept aside) and waits 20 s before resending an own-line agenda.
 - access_matrix.py: 288/288 after a clean setup_test_project.py (it must be reset before each run, or about nine older checks fail on leftover state). Browser-tested with test accounts: Timer fixes their own line and signs up as GE, theme change trimmed; a club member adds themselves as a speaker; the leader sees both.
