@@ -5,6 +5,7 @@ html.theme-ti{--v6-bg:#07517e;--v6-deep:#053e62;--v6-in:#06446b;--v6-card:#074c7
 html.theme-maroon{--v6-bg:#62222d;--v6-deep:#481720;--v6-in:#521b24;--v6-card:#5e202a;--v6-line:rgba(215,150,160,.32);--v6-mut:#d3d9d8}
 html.v663-lock,html.v663-lock body{overflow:hidden}
 .v663-retired{display:none!important}
+#members#members#members .member-add-button,#members#members#members [onclick*="openMemberEditorForNew"]{display:none!important}
 
 $D{position:fixed;inset:0;margin:auto;width:min(900px,calc(100vw - 32px));max-width:none;height:auto;max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--v6-line);border-radius:22px;background:var(--v6-deep);color:#fff;box-shadow:0 30px 90px rgba(0,0,0,.55);overflow:hidden;font-family:inherit}
 $D[open]{display:flex;flex-direction:column}
@@ -89,9 +90,22 @@ $D .v663-tri button[data-v="yes"][aria-checked="true"]{background:var(--v6-ok);c
 $D .v663-tri button[data-v="no"][aria-checked="true"]{background:#d65b5b;color:#fff}
 $D .v663-tri button[data-v="unk"][aria-checked="true"]{background:rgba(255,255,255,.14);color:#fff}
 $D .v663-club-form{margin:0;padding:0}
+$D .v663-hidden-fields{display:none!important}
+$D .v663-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+$D .v663-tile{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;background:var(--v6-in);border:1px solid var(--v6-line)}
+$D .v663-tile span{font-size:12.5px;font-weight:700;color:var(--v6-mut)}
+$D .v663-tile b{font-size:22px;font-weight:800;color:#fff}
+$D .v663-tile b.v663-tile-text{font-size:15px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+$D .v663-tile small{font-size:11.5px;color:var(--v6-mut);opacity:.85}
+$D .v663-paths{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+$D .v663-paths span{padding:6px 12px;border-radius:99px;border:1px solid var(--v6-line);font-size:13.5px;font-weight:700}
+$D .v663-paths span.is-primary{border-color:var(--v6-acc);color:var(--v6-acc)}
+$D .v663-paths em{color:var(--v6-mut);font-size:14px}
+$D .v663-row{display:flex;flex-wrap:wrap;gap:10px}
+$D .v663-row .btn{min-height:42px;margin:0}
 
 @media (max-width:760px){
- $D .v663-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ $D .v663-grid,$D .v663-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:640px){
  $D{width:100vw;max-height:100dvh;height:100dvh;border-radius:0;border:0}

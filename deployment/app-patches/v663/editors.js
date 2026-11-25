@@ -16,10 +16,10 @@ const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV',
 
 /* ---------- field builders ---------- */
 const F={
- text(id,label,val,o={}){return `<label class="v663-f ${o.wide?'wide':''} ${o.full?'full':''}"><span>${label}</span><input id="${id}" type="${o.type||'text'}" value="${H(val)}"${o.ph?` placeholder="${H(o.ph)}"`:''}${o.list?` list="${o.list}"`:''}${o.min!=null?` min="${o.min}"`:''}${o.req?' required':''} autocomplete="off"${o.type==='number'?' inputmode="numeric"':''}>${o.hint?`<small>${o.hint}</small>`:''}</label>`;},
- select(id,label,val,opts,o={}){return `<label class="v663-f ${o.wide?'wide':''}"><span>${label}</span><select id="${id}">${opts.map(x=>{const [v,t]=Array.isArray(x)?x:[x,x];return `<option value="${H(v)}"${String(v)===String(val??'')?' selected':''}>${H(t)}</option>`;}).join('')}</select>${o.hint?`<small>${o.hint}</small>`:''}</label>`;},
+ text(id,label,val,o={}){return `<label class="v663-f ${o.wide?'wide':''} ${o.full?'full':''}"><span>${label}</span><input id="${id}"${o.name?` name="${o.name}"`:''} type="${o.type||'text'}" value="${H(val)}"${o.ph?` placeholder="${H(o.ph)}"`:''}${o.list?` list="${o.list}"`:''}${o.min!=null?` min="${o.min}"`:''}${o.req?' required':''} autocomplete="off"${o.type==='number'?' inputmode="numeric"':''}>${o.hint?`<small>${o.hint}</small>`:''}</label>`;},
+ select(id,label,val,opts,o={}){return `<label class="v663-f ${o.wide?'wide':''}"><span>${label}</span><select id="${id}"${o.name?` name="${o.name}"`:''}>${opts.map(x=>{const [v,t]=Array.isArray(x)?x:[x,x];return `<option value="${H(v)}"${String(v)===String(val??'')?' selected':''}>${H(t)}</option>`;}).join('')}</select>${o.hint?`<small>${o.hint}</small>`:''}</label>`;},
  seg(name,label,val,opts){if(val&&!opts.includes(val))opts=[...opts,val];return `<div class="v663-f full"><span>${label}</span><div class="v663-seg" role="radiogroup" aria-label="${H(label)}" data-name="${name}">${opts.map(x=>`<button type="button" role="radio" aria-checked="${x===val}" data-v="${H(x)}">${H(x)}</button>`).join('')}</div></div>`;},
- area(id,label,val,o={}){return `<label class="v663-f full"><span>${label}</span><textarea id="${id}" rows="${o.rows||3}"${o.ph?` placeholder="${H(o.ph)}"`:''}>${H(val)}</textarea></label>`;},
+ area(id,label,val,o={}){return `<label class="v663-f full"><span>${label}</span><textarea id="${id}"${o.name?` name="${o.name}"`:''} rows="${o.rows||3}"${o.ph?` placeholder="${H(o.ph)}"`:''}>${H(val)}</textarea></label>`;},
  check(id,label,on,hint){return `<button type="button" class="v663-check" id="${id}" aria-pressed="${!!on}"><span class="v663-box" aria-hidden="true"></span><span class="v663-check-copy"><b>${label}</b>${hint?`<small>${hint}</small>`:''}</span></button>`;},
  sec(title,inner,note){return `<section class="v663-sec"><h3>${title}</h3>${note?`<p>${note}</p>`:''}<div class="v663-grid">${inner}</div></section>`;}
 };
@@ -300,14 +300,17 @@ function saveContest(d,c){
 /* ---------- Clubs: the existing club form, shown in the pop-up ---------- */
 const CLUB_SECTIONS=[
  ['Club',['clubName','clubNumber','clubArea','clubStatus','clubAliases','clubMode','clubCity','clubIsland']],
- ['Membership',['clubCurrentMembers','baseMembers','newMembers','renewedMembers','lostMembers','mar27Override']],
- ['Club activity',['dcpGoals','meetings','attendance','guests','conversions','educationAwards','officersTrained']],
- ['Paperwork and risk',['duesPaid','officerList','cspSubmitted','renewalStatus','suspensionRisk','suspensionReason']],
+ ['Numbers from Toastmasters data',['mar27Override']],
+ ['Paperwork',['duesPaid','officerList','cspSubmitted','renewalStatus']],
+ ['Suspension risk',['suspensionRisk','suspensionReason']],
  ['Notes',['clubNotes']]
 ];
-const CLUB_WIDE=new Set(['clubName','clubAliases','suspensionReason']);
+/* Filled by imports, the member roster or TLI attendance (shown as read-only tiles), or never used (all 16 clubs empty on
+   25 Nov 2026). The inputs stay in the form, hidden, so a save keeps their stored values. */
+const CLUB_HIDDEN=['clubCurrentMembers','baseMembers','newMembers','renewedMembers','lostMembers','dcpGoals','meetings','attendance','guests','conversions','educationAwards','officersTrained'];
+const CLUB_WIDE=new Set(['clubName','clubAliases','suspensionReason','mar27Override']);
 const CLUB_FULL=new Set(['clubNotes']);
-const CLUB_LABELS={mar27Override:'Secured for Mar 2027',officersTrained:'Officers trained (from TLI attendance)',clubAliases:'Other names'};
+const CLUB_LABELS={mar27Override:'Override the secured count for Mar 2027',clubAliases:'Other names',suspensionRisk:'Flag suspension risk',suspensionReason:'Reason / remarks'};
 function clubDialog(){
  const form=$i('clubForm');if(!form)return null;
  let d=$i('v663ClubDlg');if(d&&d.contains(form))return d;
@@ -319,6 +322,11 @@ function clubDialog(){
  const sections=CLUB_SECTIONS.map(([title,ids])=>{const sec=document.createElement('section');sec.className='v663-sec';sec.innerHTML=`<h3>${title}</h3><div class="v663-grid"></div>`;const g=sec.querySelector('.v663-grid');
   for(const id of ids){const el=$i(id),f=el?.closest('.field');if(!f||used.has(f))continue;used.add(f);g.appendChild(f);f.classList.add('v663-field');if(CLUB_WIDE.has(id))f.classList.add('wide');if(CLUB_FULL.has(id))f.classList.add('full');if(CLUB_LABELS[id]){const l=f.querySelector('label');if(l)l.textContent=CLUB_LABELS[id];}}
   return sec;});
+ const hidden=document.createElement('div');hidden.className='v663-hidden-fields';hidden.hidden=true;
+ for(const id of CLUB_HIDDEN){const f=$i(id)?.closest('.field');if(f&&!used.has(f)){used.add(f);hidden.appendChild(f);}}
+ sections.push(hidden);
+ const numSec=sections[1];if(numSec){const p=document.createElement('p');p.textContent='These update with each Toastmasters import, the member roster and TLI attendance, so they are not typed here.';const tiles=document.createElement('div');tiles.className='v663-tiles';tiles.id='v663ClubTiles';numSec.querySelector('h3').after(p,tiles);}
+ const riskSec=sections[3];if(riskSec){const p=document.createElement('p');p.textContent='Clubs with 2 or fewer members, or under 8 after 31 Mar 2027, are flagged automatically. Tick this only for another reason.';riskSec.querySelector('h3').after(p);}
  const rest=grid?[...grid.querySelectorAll(':scope > .field')].filter(f=>!used.has(f)):[];
  if(rest.length){const sec=document.createElement('section');sec.className='v663-sec';sec.innerHTML='<h3>More</h3><div class="v663-grid"></div>';rest.forEach(f=>{f.classList.add('v663-field');sec.querySelector('.v663-grid').appendChild(f);});sections.push(sec);}
  if(grid)grid.replaceWith(...sections);else sections.forEach(s=>form.appendChild(s));
@@ -350,7 +358,7 @@ function openClub(id){
  if(typeof db==='undefined')return;
  const d=clubDialog();if(!d)return;
  const club=id?(db.clubs||[]).find(c=>c.id===id):null;
- if(id&&!club)return;
+ if(!club)return; /* clubs come from the Toastmasters club list; there is no manual 'new club' */
  $i('clubForm').querySelectorAll('option[data-v663-kept]').forEach(o=>o.remove());
  if(club){
   setClubFormValues(club);
@@ -363,11 +371,101 @@ function openClub(id){
  }else{try{resetClubForm();}catch(_){}}
  const clubs=(db.clubs||[]).slice().sort((a,b)=>String(a.area||'').localeCompare(String(b.area||''))||String(a.name||'').localeCompare(String(b.name||'')));
  setup(d,{kicker:club?`Area ${club.area||'—'} · Club${club.number?' #'+clubNo(club.number):''}`:'New club',title:club?club.name:'Add a club',sub:club?[club.city,club.island].filter(Boolean).join(' · '):'Most numbers fill in automatically from the Toastmasters imports.',
-  pick:[['','＋ New club'],...clubs.map(c=>[c.id,`${c.area?c.area+' · ':''}${c.name}`])],pickValue:club?club.id:'',body:null,del:!!club,saveLabel:'Save club'});
- syncSwitches(d);
+  pick:[...clubs.map(c=>[c.id,`${c.area?c.area+' · ':''}${c.name}`])],pickValue:club.id,body:null,del:true,saveLabel:'Save club'});
+ syncSwitches(d);clubTiles(club);
  d.__onInput=el=>{const b=el?.closest?.('.v663-switch');if(b){const sel=$i(b.dataset.for);if(sel){sel.value=b.getAttribute('aria-pressed')==='true'?'true':'false';sel.dispatchEvent(new Event('change',{bubbles:true}));}}};
- d.__onPick=v=>openClub(v||null);
+ d.__onPick=v=>v&&openClub(v);
  d.__onDelete=()=>{if(!club)return;deleteClub(club.id);if(!(db.clubs||[]).some(c=>c.id===club.id)){d.__dirty=null;d.close();toast('Club deleted');}};
+ openDlg(d);armDirty(d);
+}
+
+function clubTiles(club){
+ const box=$i('v663ClubTiles');if(!box)return;
+ if(!club){box.innerHTML='<div class="v663-empty">Numbers appear after the next Toastmasters import.</div>';return;}
+ const safe=f=>{try{return f();}catch(_){return '—';}};
+ const ov=club.mar27Override!==null&&club.mar27Override!==undefined&&club.mar27Override!=='';
+ const tiles=[
+  ['Base (1 Jul)',num(club.baseMembers),'Toastmasters import'],
+  ['Current members',safe(()=>currentClubMemberCount(club)),'Member roster'],
+  ['New',num(club.newMembers),'Toastmasters import'],
+  ['Renewed',num(club.renewedMembers),'Member roster'],
+  ['Lost',num(club.lostMembers),'Member roster'],
+  ['Secured for Mar 2027',safe(()=>mar27SecuredCount(club)),ov?'Manual override':'Calculated'],
+  ['DCP goals',num(club.dcpGoals)+'/10','Toastmasters dashboard'],
+  ['Officers trained',num(club.officersTrained),'TLI attendance']
+ ];
+ box.innerHTML=tiles.map(([l,v,src])=>`<div class="v663-tile"><span>${H(l)}</span><b>${H(v)}</b><small>${H(src)}</small></div>`).join('');
+}
+
+/* ---------- Members: quick edit in the pop-up ---------- */
+function openMember(key){
+ if(typeof db==='undefined')return;
+ const m=(db.memberRecords||[]).find(x=>x.key===key);if(!m)return;
+ const club=(db.clubs||[]).find(c=>norm(c.number)===norm(m.clubNumber));
+ const u=user();if(u.role==='area-director'&&(club?.area||m.area||'')!==u.area)return;
+ const d=makeDialog('v663Editor');
+ const designation=typeof memberDesignation==='function'?memberDesignation(m):'';
+ const aliases=typeof memberNicknames==='function'?memberNicknames(m).join(', '):(m.nickname||'');
+ const chinese=typeof memberChineseName==='function'?memberChineseName(m):(m.chineseName||'');
+ const paths=(typeof memberPathways==='function'?memberPathways(m):[]).filter(x=>x.status!=='completed');
+ const body=
+  F.sec('Name',F.text('v663MName','Full name',m.name,{name:'name',req:1,wide:1})+F.text('v663MChinese','Chinese name / 中文名',chinese,{name:'chineseName',ph:'Hanzi'})+F.select('v663MCred','Credential',designation,[['','TM'],['DTM','DTM']],{name:'designation'})+F.text('v663MAliases','Nicknames',aliases,{name:'aliases',full:1,ph:'e.g. Dick, Mochi',hint:'Separate with commas. Used to recognise them in agendas and WhatsApp messages.'}))+
+  `<section class="v663-sec"><h3>Membership</h3><p>From the Toastmasters club roster; the next roster import updates these.</p><div class="v663-tiles">${[['Club',club?`${club.area?club.area+' · ':''}${club.name}`:(m.clubName||'—')],['Status',m.active===false?'Past / lapsed':'Active'],['Member ID',m.memberId||'—'],['Paid through',m.renewThrough||'—'],['Joined the club',m.clubJoinDate?pretty(String(m.clubJoinDate).slice(0,10)):'—']].map(([l,v])=>`<div class="v663-tile"><span>${H(l)}</span><b class="v663-tile-text">${H(v)}</b></div>`).join('')}</div>
+   <input type="hidden" name="clubId" value="${H(club?.id||'')}"><input type="hidden" name="status" value="${m.active===false?'inactive':'active'}"><input type="hidden" name="memberId" value="${H(m.memberId||'')}"><input type="hidden" name="renewThrough" value="${H(m.renewThrough||'')}"><input type="hidden" name="clubJoinDate" value="${H(String(m.clubJoinDate||'').slice(0,10))}"></section>`+
+  F.sec('Contact',F.text('v663MEmail','Email',m.email,{name:'email',type:'email',wide:1})+F.text('v663MPhone','Phone',m.phone,{name:'phone',type:'tel'})+F.text('v663MAddress','Address',m.address,{name:'address',full:1}))+
+  F.sec('Notes',F.area('v663MNotes','Notes',m.notes,{name:'notes',rows:3}))+
+  `<section class="v663-sec"><h3>Pathways</h3><div class="v663-paths">${paths.length?paths.map(x=>`<span class="${x.primary?'is-primary':''}">${H(x.pathway)}</span>`).join(''):'<em>None yet</em>'}</div><div class="v663-row"><button type="button" class="btn ghost" data-profile="paths">Manage pathways</button><button type="button" class="btn ghost" data-profile="open">Open full profile</button></div></section>`;
+ const same=(db.memberRecords||[]).filter(x=>norm(x.clubNumber)===norm(m.clubNumber)).sort((a,b)=>((a.active===false)-(b.active===false))||String(a.name||'').localeCompare(String(b.name||'')));
+ setup(d,{kicker:[club?.name||m.clubName,m.memberId?'#'+m.memberId:''].filter(Boolean).join(' · ')||'Member',title:m.name||'Member',sub:[m.active===false?'Past member':'Active',m.renewThrough?'paid through '+m.renewThrough:''].filter(Boolean).join(' · '),
+  pick:same.map(x=>[x.key,`${x.name||'—'}${x.active===false?' (past)':''}`]),pickValue:m.key,body,del:true,saveLabel:'Save member'});
+ d.__onPick=v=>v&&openMember(v);
+ d.__onClick=e=>{const b=e.target.closest('[data-profile]');if(!b)return;if(d.__dirty?.()&&!confirm('Discard your unsaved changes?'))return;d.__dirty=null;d.close();window.memberInlineOpenProfileV529?window.memberInlineOpenProfileV529(encodeURIComponent(m.key),b.dataset.profile==='paths'):showMemberDetail(m.key);};
+ d.__onSave=()=>{
+  if(!val('v663MName').trim())return invalid(d,null,'v663MName','Add the member\'s name.');
+  if(!club)return invalid(d,null,'v663MName','This member\'s club is not in the club list, so the record cannot be saved here.');
+  const form=d.querySelector('form.v663-shell');d.__dirty=null;d.close();
+  saveInlineMemberEdit(m.key,form);
+ };
+ d.__onDelete=()=>{deleteMemberRecord(m.key);if(!(db.memberRecords||[]).some(x=>x.key===m.key)){d.__dirty=null;d.close();try{renderMemberDirectory();}catch(_){}toast('Member deleted');}};
+ openDlg(d);armDirty(d);
+}
+
+/* ---------- Exco: the Toastmasters officer list fills this, but leaders can add or correct a seat at once
+   (for example a mid-term change) without waiting for the next list. ---------- */
+function officerRoles(){const sel=$i('officerRoleEdit');return sel?[...sel.options].map(o=>[o.value,o.textContent]):[['Club President','Club President'],['Other','Other']];}
+function openOfficer(id,clubId){
+ if(typeof db==='undefined')return;
+ const u=user();
+ const o=id?(db.officerRecords||[]).find(x=>x.id===id):null;if(id&&!o)return;
+ const clubs=(db.clubs||[]).filter(c=>u.role!=='area-director'||c.area===u.area).sort((a,b)=>String(a.area||'').localeCompare(String(b.area||''))||String(a.name||'').localeCompare(String(b.name||'')));
+ const club=o?(db.clubs||[]).find(c=>norm(c.number)===norm(o.clubNumber)):clubs.find(c=>clubNo(c.number)===clubNo(clubId));
+ if(o&&u.role==='area-director'&&(o.area||club?.area||'')!==u.area)return;
+ const d=makeDialog('v663Editor');
+ const tri=v=>v===true?'Attended':v===false?"Didn't attend":'Not recorded';
+ const opts=['Attended',"Didn't attend",'Not recorded'];
+ const roles=officerRoles(),role=o?(typeof canonicalExcoRole==='function'?canonicalExcoRole(o.role):o.role):'Club President';
+ const body=
+  F.sec('Officer',F.text('v663OName','Name',o?.name,{req:1,wide:1,list:'v663People',ph:'Search a member or type a name'})+F.select('v663ORole','Position',role,roles.some(r=>r[0]===role)?roles:[...roles,[role,role]],{wide:1})+F.select('v663OClub','Club',club?clubNo(club.number):'',[['','Choose a club'],...clubs.map(c=>[clubNo(c.number),`${c.area?c.area+' · ':''}${c.name}`])],{wide:1})+F.text('v663OTerm','Term',o?.term,{wide:1,ph:'1 Jul 2026 – 30 Jun 2027'})+F.text('v663OContact','Contact',o?.contact,{full:1}),
+   'The Toastmasters officer list import fills this. Change it here when a seat changes before the next import.')+
+  F.sec('TLI attendance',F.seg('tli1','TLI 1',tri(o?.tli1),opts)+F.seg('tli2','TLI 2',tri(o?.tli2),opts),'You can also record a whole session at once from the TLI page.');
+ const same=o?(db.officerRecords||[]).filter(x=>norm(x.clubNumber)===norm(o.clubNumber)&&!x.past).sort((a,b)=>String(a.role||'').localeCompare(String(b.role||''))):[];
+ setup(d,{kicker:o?[club?.name||o.clubName,o.past?'Past Exco':''].filter(Boolean).join(' · '):'New officer',title:o?(o.name||'Officer'):'Add an officer',sub:o?(o.role||''):'For a seat the last officer list does not show yet.',pick:same.length>1?same.map(x=>[x.id,`${x.name} · ${x.role||''}`]):null,pickValue:o?.id||'',body,del:!!o,saveLabel:o?'Save officer':'Add officer'});
+ d.__onPick=v=>v&&openOfficer(v);
+ const back=v=>v==='Attended'?true:v==="Didn't attend"?false:null;
+ d.__onSave=()=>{
+  const name=val('v663OName').trim(),c=clubs.find(x=>clubNo(x.number)===val('v663OClub'));
+  if(!name)return invalid(d,null,'v663OName','Add the officer\'s name.');
+  if(!c)return invalid(d,null,'v663OClub','Choose the club.');
+  const pickedRole=val('v663ORole');const rec={name,role:o&&pickedRole===role?o.role:pickedRole,clubNumber:c.number,clubName:c.name,area:c.area,term:val('v663OTerm').trim(),contact:val('v663OContact').trim(),tli1:back(segVal(d,'tli1')),tli2:back(segVal(d,'tli2'))};
+  db.officerRecords=db.officerRecords||[];
+  if(o){const moved=o.name!==rec.name||o.role!==rec.role||norm(o.clubNumber)!==norm(rec.clubNumber);Object.assign(o,rec);if(moved&&typeof officerKey==='function')o.key=officerKey(o);}
+  else{const n={id:uid(),...rec};if(typeof officerKey==='function')n.key=officerKey(n);
+   if(db.officerRecords.some(x=>!x.past&&x.key&&x.key===n.key))return invalid(d,null,'v663OName',`${name} is already listed in this seat.`);
+   db.officerRecords.push(n);}
+  try{updateOfficerCounts();}catch(_){}
+  d.__dirty=null;d.close();saveData();try{render();}catch(_){}toast(o?'Officer saved':`${name} added`);
+ };
+ d.__onDelete=()=>{if(!o)return;deleteOfficerRecord(o.id);if(!(db.officerRecords||[]).some(x=>x.id===o.id)){d.__dirty=null;d.close();toast('Officer removed');}};
  openDlg(d);armDirty(d);
 }
 
@@ -450,7 +548,8 @@ function install(){
  window.editContest=id=>openContest(id);
  window.v663NewContest=()=>openContest(null);
  window.editClub=id=>openClub(id);
- window.v663NewClub=()=>openClub(null);
+ if(typeof saveInlineMemberEdit==='function')window.editMemberRecord=key=>openMember(key);
+ if(typeof deleteOfficerRecord==='function'&&$i('officerForm'))window.editOfficerRecord=id=>openOfficer(id);
  if($i('tli')&&typeof reconcileTliDatabaseV252==='function')window.renderTlis=renderTlisV663;
  if($i('contestSchedule')&&typeof roleScopedContests==='function')window.renderContestSchedule=renderContestScheduleV663;
  ['tliEditor','contestLogisticsEditor','clubEditor'].forEach(id=>{const e=$i(id);if(e){e.open=false;e.classList.add('v663-retired');}});
@@ -458,8 +557,12 @@ function install(){
  if(sched&&!$i('v663AddContest')){const head=sched.previousElementSibling;if(head&&head.classList.contains('section-title')){head.classList.add('v663-head-row');head.insertAdjacentHTML('beforeend','<button type="button" class="btn primary" id="v663AddContest" onclick="v663NewContest()">＋ Add contest</button>');}}
  const heroCopy=document.querySelector('#tli .tli-center-hero p');
  if(heroCopy)heroCopy.textContent='Every Division G officer training session in one place. Open a session to update its details or tick off which officers attended.';
- const ce=$i('clubEditor');
- if(ce&&!$i('v663AddClub'))ce.insertAdjacentHTML('beforebegin','<div class="v663-addbar"><button type="button" class="btn primary" id="v663AddClub" onclick="v663NewClub()">＋ Add club</button></div>');
+ const me=$i('memberEditor');
+ /* Members and clubs come from Toastmasters downloads (club roster, club list): no manual "add". Exco keeps one for seats that change between officer lists. */
+ if(me){me.open=false;me.classList.add('v663-retired');}
+ const xe=$i('excoEditor');if(xe){xe.open=false;xe.classList.add('v663-retired');}
+ window.v663NewOfficer=()=>openOfficer(null,null);
+ const xa=document.querySelector('#officers .directory-title-actions');if(xa&&!$i('v663AddOfficer'))xa.insertAdjacentHTML('afterbegin','<button class="btn primary" id="v663AddOfficer" type="button" onclick="v663NewOfficer()">＋ Add officer</button>');
  try{render();}catch(_){}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(install,0),{once:true});else install();
