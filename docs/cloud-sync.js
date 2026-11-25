@@ -244,7 +244,7 @@ async function currentAppFile(channel,fallback){
 }
 async function showMemberCommunity(data){
  const m=el('hdg-auth-message');if(m)m.textContent='Opening Hello Division G…';
- const app=await currentAppFile('member','v663-member.html');
+ const app=await currentAppFile('member','v664-member.html');
  const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
  const marker='/* HDG_MEMBER_V632_CONTEXT */';
  if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)){
@@ -311,6 +311,12 @@ cloud.saveMeeting=(meetingId,meetingDate,patch,expectedUpdatedAt)=>request('/res
 cloud.listMeetings=(club,from,meetingId)=>request('/rest/v1/rpc/hdg_meetings_list',{p_club:club||null,p_from:from||null,p_meeting_id:meetingId||null});
 cloud.meetingAccess=meetingId=>request('/rest/v1/rpc/hdg_my_meeting_access',{p_meeting_id:meetingId});
 cloud.accountId=()=>session&&session.user&&session.user.id||'';
+// 017: clubs manage their own Exco.
+cloud.myExcoClubs=()=>request('/rest/v1/rpc/hdg_my_exco_clubs',{});
+cloud.clubExco=club=>request('/rest/v1/rpc/hdg_club_exco',{p_club:club});
+cloud.setClubOfficer=(club,role,person)=>request('/rest/v1/rpc/hdg_set_club_officer',{p_club:club,p_role:role,p_person:person||null});
+cloud.importClubOfficers=(club,asOf,seats)=>request('/rest/v1/rpc/hdg_import_club_officers',{p_club:club,p_as_of:asOf,p_seats:seats});
+cloud.excoChanges=since=>request('/rest/v1/rpc/hdg_exco_changes',{p_since:since||null});
 function redirectUrl(){return location.protocol==='file:'?'http://localhost:3000/':location.origin+location.pathname;}
 async function sendPasswordReset(){
  const input=el('hdg-email');if(!input.reportValidity())return;
@@ -466,7 +472,7 @@ async function connect(){
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
   el('hdg-auth-message').textContent='Opening Hello Division G…';
-  const app=await currentAppFile('community','v663-community.html');
+  const app=await currentAppFile('community','v664-community.html');
   const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
   if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="'+app.release+'";'))throw new Error('The protected app file is not a connected '+app.release.replace('-community','')+' build.');
   global.HDG_ENTRY_LOADER=false;

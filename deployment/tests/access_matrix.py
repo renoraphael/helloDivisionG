@@ -620,6 +620,71 @@ sql("delete from public.hdg_meetings where club_number = '9000001'; "
     "delete from hdg_community_private.votes where ballot_id in (select id from hdg_community_private.ballots where meeting_id like 'agenda-9000001-%'); "
     "delete from hdg_community_private.ballots where meeting_id like 'agenda-9000001-%'")
 
+# 017: clubs manage their own Exco. Any current officer of the club, at once; newer of club change and officer list wins.
+C1 = '9000001'
+def exco(r):
+    return rpc('hdg_club_exco', T[r], {'p_club': C1})
+def seat(e, role):
+    return next((x for x in (e or {}).get('seats') or [] if x.get('role') == role), {}) if isinstance(e, dict) else {}
+def set_seat(r, role, person):
+    return rpc('hdg_set_club_officer', T[r], {'p_club': C1, 'p_role': role, 'p_person': person})
+s, mine = rpc('hdg_my_exco_clubs', T['officer'])
+check('017 an officer gets their club for the Club Exco tab', s == 200 and any(c.get('club') == C1 for c in mine), str(mine)[:120])
+s, mine = rpc('hdg_my_exco_clubs', T['outsider'])
+check('017 someone with no seat gets no Club Exco tab', s == 200 and mine == [], str(mine)[:120])
+s, e = exco('cross')
+check('017 a member without a seat cannot open the club Exco editor', s != 200, str(s))
+s, _ = set_seat('cross', 'club_treasurer', P['cross'])
+check('017 a member without a seat cannot take a seat', s != 200, str(s))
+s, e = exco('officer')
+check('017 a club officer sees the Exco and may edit', s == 200 and e.get('canEdit') is True and seat(e, 'club_president').get('person') == P['officer'], str(e)[:160])
+check('017 the officer gets the club\'s active members to choose from', s == 200 and P['cross'] in [c['person'] for c in e.get('candidates', [])]
+      and P['past_member'] not in [c['person'] for c in e.get('candidates', [])], str(e.get('candidates'))[:160])
+s, _ = set_seat('officer', 'club_secretary', P['past_member'])
+check('017 a seat only goes to an active member of the club', s != 200, str(s))
+s, e = set_seat('officer', 'club_treasurer', P['cross'])
+check('017 a club officer gives a seat to a club member', s == 200 and seat(e, 'club_treasurer').get('person') == P['cross']
+      and seat(e, 'club_treasurer').get('source') == 'club', str(e)[:200])
+s, e = exco('cross')
+check('017 the new officer has access at once', s == 200 and e.get('canEdit') is True, str(s))
+s, e = set_seat('cross', 'club_saa', P['officer'])
+check('017 any officer (not only the President) can change a seat', s == 200 and seat(e, 'club_saa').get('person') == P['officer'], str(e)[:160])
+for r in ('member_k', 'outsider', 'past_member', 'past_ad'):
+    s, _ = set_seat(r, 'club_vpe', P[r] if r in P else None)
+    check(f'017 {r} cannot change this club\'s Exco', s != 200, str(s))
+s, e = set_seat('ad_g1', 'club_vpe', P['admin'])
+check('017 the club\'s Area Director can change a seat (source leader)', s == 200 and seat(e, 'club_vpe').get('source') == 'leader', str(e)[:160])
+s, _ = rpc('hdg_import_club_officers', T['cross'], {'p_club': C1, 'p_as_of': TODAY, 'p_seats': []})
+check('017 a club officer cannot import an officer list', s != 200, str(s))
+YDAY = sql("select (hdg_sync_private.today() - 1)::text d")[0]['d']
+mid = lambda k: sql(f"select ti_member_id m from public.hdg_people where id = '{P[k]}'")[0]['m']
+listed = [{'role': 'club_president', 'memberId': mid('officer')}, {'role': 'club_treasurer', 'memberId': mid('admin')},
+          {'role': 'club_saa', 'memberId': mid('officer')}, {'role': 'club_vpe', 'memberId': mid('admin')}, {'role': 'club_secretary', 'memberId': '999999999'}]
+s, res = rpc('hdg_import_club_officers', T['ad_g1'], {'p_club': C1, 'p_as_of': YDAY, 'p_seats': listed})
+s2, e = exco('officer')
+check('017 an older officer list keeps the club\'s newer change', s == 200 and seat(e, 'club_treasurer').get('person') == P['cross']
+      and any(k['role'] == 'club_treasurer' for k in res.get('kept', [])), str(res)[:200])
+check('017 the list\'s unknown member ID is reported, not applied', any(u['role'] == 'club_secretary' for u in res.get('unmatched', [])), str(res)[:200])
+check('017 the president from the list stays (same person, now from the list)', seat(e, 'club_president').get('person') == P['officer']
+      and seat(e, 'club_president').get('source') == 'import', str(seat(e, 'club_president'))[:120])
+sql(f"update public.hdg_roles set source_at = now() - interval '10 days' where scope_code = '{C1}' and role = 'club_treasurer' and person_id = '{P['cross']}'")
+s, res = rpc('hdg_import_club_officers', T['ad_g1'], {'p_club': C1, 'p_as_of': YDAY, 'p_seats': listed})
+s2, e = exco('officer')
+check('017 a newer officer list replaces an older club change', s == 200 and seat(e, 'club_treasurer').get('person') == P['admin'], str(e)[:200])
+check('017 a seat missing from a newer list is left empty', not seat(e, 'club_vppr').get('person'), str(seat(e, 'club_vppr')))
+s, _ = set_seat('cross', 'club_vppr', P['cross'])
+check('017 the replaced officer loses Exco access at once', s != 200, str(s))
+s, ch = rpc('hdg_exco_changes', T['ad_g1'], {'p_since': None})
+check('017 leaders see club-made Exco changes', s == 200 and any(c['club'] == C1 and c['source'] == 'club' for c in ch), str(ch)[:160])
+s, ch = rpc('hdg_exco_changes', T['member_k'], {'p_since': None})
+check('017 others see no Exco changes', s == 200 and ch == [], str(ch)[:120])
+s, _ = rpc('hdg_club_exco', None, {'p_club': C1})
+check('017 signed out: no Exco', s != 200, str(s))
+sql(f"delete from public.hdg_roles where scope_type = 'club' and scope_code = '{C1}'; "
+    f"insert into public.hdg_roles(person_id, role, scope_type, scope_code, year_start, starts_on, ends_on) "
+    f"values ('{P['officer']}', 'club_president', 'club', '{C1}', 2026, make_date(2026, 7, 1), make_date(2027, 6, 30)); "
+    f"delete from public.hdg_import_freshness where club_number = '{C1}' and kind = 'officers'")
+
 failed = [r for r in results if not r[0]]
 for ok, name, detail in results:
     print(('PASS ' if ok else 'FAIL ') + name + (f'  [{detail}]' if not ok and detail else ''))
