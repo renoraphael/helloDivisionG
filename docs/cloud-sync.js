@@ -18,7 +18,9 @@ class SyncQueue {
   // If a request is in flight, retain a reversal to its previous value too.
   if(!this.saving&&!this.pending&&signature(snapshot)===this.baseline)return;
   this.pending=snapshot;await this.persist(this.pending);
-  this.status('Saved on this device; waiting to sync.');
+  // While a choice is waiting, keep saying so (v662); before, this line hid the warning.
+  if(this.conflict)this.status('Saving to the shared version is paused: choose what to do with your unsynced edits in Settings › Sync & account.','conflict');
+  else this.status('Saved on this device; waiting to sync.');
  }
  async flush(){
   if(this.saving||this.conflict||(!this.pending&&!this.inflight))return;
@@ -242,7 +244,7 @@ async function currentAppFile(channel,fallback){
 }
 async function showMemberCommunity(data){
  const m=el('hdg-auth-message');if(m)m.textContent='Opening Hello Division G…';
- const app=await currentAppFile('member','v661-member.html');
+ const app=await currentAppFile('member','v662-member.html');
  const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
  const marker='/* HDG_MEMBER_V632_CONTEXT */';
  if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)){
@@ -383,6 +385,20 @@ const queue=new SyncQueue({
  send:job=>{if(!ready)throw Object.assign(new Error('Sign in required'),{status:401});return request('/rest/v1/rpc/hdg_save_web_state',{p_expected_revision:job.revision,p_payload:job.payload,p_request_id:job.id});},
  persist:persistPending,status:showStatus,requestId:()=>crypto.randomUUID()
 });cloud.queue=queue;
+// Same data, ignoring key order (the database sorts keys) and the built-in logo images the app recreates on load.
+function sameContent(a,b){
+ const canon=v=>Array.isArray(v)?'['+v.map(canon).join(',')+']':v&&typeof v==='object'?'{'+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}':JSON.stringify(v===undefined?null:v);
+ const strip=x=>{const out=shared(x);delete out.updated;if(out.database)delete out.database.assets;return out;};
+ try{return canon(strip(a))===canon(strip(b));}catch(_){return false;}
+}
+// The newest held save was handled; any older ones stay in this browser's recovery store instead of being dropped.
+async function markDraftsRecovered(handled){
+ for(const draft of recoveredDrafts){
+  if(draft!==handled)await durablePutRecord({...draft,id:'cloud-recovery-'+draft.id});
+  await durablePutRecord({...draft,payload:null,request:null,recovered:true});
+ }
+ recoveredDrafts=[];
+}
 async function preserveConflict(){
  const payload=queue.snapshot()||shared(canonicalStoragePayload(db));
  await durablePutRecord({id:'cloud-recovery-'+Date.now(),payload,baseRevision:queue.revision,owner:session?.user?.id||null,savedAt:new Date().toISOString()});
@@ -450,7 +466,7 @@ async function connect(){
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
   el('hdg-auth-message').textContent='Opening Hello Division G…';
-  const app=await currentAppFile('community','v661-community.html');
+  const app=await currentAppFile('community','v662-community.html');
   const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
   if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="'+app.release+'";'))throw new Error('The protected app file is not a connected '+app.release.replace('-community','')+' build.');
   global.HDG_ENTRY_LOADER=false;
@@ -469,9 +485,28 @@ async function connect(){
  const idb=await durableOpenDb();
  const records=await new Promise((resolve,reject)=>{const req=idb.transaction(DURABLE_STORE,'readonly').objectStore(DURABLE_STORE).getAll();req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
  recoveredDrafts=records.filter(record=>record.id.startsWith('cloud-pending')&&record.id!==pendingId&&record.owner===session.user.id&&!record.recovered&&(record.payload||record.request));
+ recoveredDrafts.sort((a,b)=>String(b.savedAt||'').localeCompare(String(a.savedAt||'')));
  const saved=recoveredDrafts[0];
+ let draft=saved?.owner===session.user.id?(saved.payload||saved.request?.payload||null):null;
+ // v662: a held-back save no longer blocks syncing when nothing needs choosing.
+ //  - Same as the shared version: it already arrived, so it is simply cleared.
+ //  - Made on the shared revision nobody has changed since: it is shown and sent automatically.
+ //  - Only when someone else saved in between does the person choose (download, or keep in recovery).
+ if(draft&&sameContent(draft,row.payload)){
+  await markDraftsRecovered(saved);draft=null;
+ }else if(draft&&Number(saved.baseRevision)===Number(row.revision)){
+  await apply({...row,payload:draft});
+  queue.reset(row.revision,canonicalStoragePayload(db));
+  queue.baseline=signature(row.payload);queue.pending=shared(canonicalStoragePayload(db));
+  await markDraftsRecovered(saved);await persistPending(queue.pending);
+  ready=true;document.body.classList.add('hdg-authorized');el('hdg-cloud-gate').hidden=true;
+  setStorageBootGate(false);
+  showStatus('Sending unsynced edits from your last session…');
+  await queue.flush();
+  return;
+ }
  await apply(row);queue.reset(row.revision,canonicalStoragePayload(db));
- if(saved?.owner===session.user.id&&(saved.payload||saved.request)){
+ if(draft){
   queue.revision=Number(saved.baseRevision)||row.revision;
   queue.pending=saved.payload||null;queue.inflight=saved.request||null;
   // Keep the current central snapshot visible; do not replay pending edits into it.
