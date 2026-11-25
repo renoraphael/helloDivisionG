@@ -60,7 +60,7 @@ let recoveredDrafts=[], creatingAccount=false;
 const sessionKey='hdg.cloud.session.v1';
 // The legacy agenda otherwise creates this implicit global only after an edit.
 if(typeof global.agendaGeneratedRecordId==='undefined')global.agendaGeneratedRecordId='';
-const cloud={SyncQueue,shared,signature};
+const cloud={SyncQueue,shared,signature,afterRemoteApply:[]};
 global.HDGCloud=cloud;
 function el(id){return document.getElementById(id);}
 function setSession(value){if(value&&!value.expires_at)value.expires_at=Math.floor(Date.now()/1000)+(value.expires_in||3600);session=value;if(value)sessionStorage.setItem(sessionKey,JSON.stringify(value));else{sessionStorage.removeItem(sessionKey);try{caches.delete('hdg-app-v1');}catch(_){}}}
@@ -242,7 +242,7 @@ async function currentAppFile(channel,fallback){
 }
 async function showMemberCommunity(data){
  const m=el('hdg-auth-message');if(m)m.textContent='Opening Hello Division G…';
- const app=await currentAppFile('member','v659-member.html');
+ const app=await currentAppFile('member','v660-member.html');
  const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
  const marker='/* HDG_MEMBER_V632_CONTEXT */';
  if(!html.includes('<script id="hdg-member-context">'+marker+'</script>')||html.indexOf(marker)!==html.lastIndexOf(marker)){
@@ -302,6 +302,13 @@ cloud.castBallot=(token,browserId,choices)=>request('/rest/v1/rpc/hdg_cast_ballo
 cloud.manageBallot=(meetingId,action,title,choices)=>request('/rest/v1/rpc/hdg_manage_ballot',{
  p_meeting_id:meetingId,p_action:action,p_title:title??null,p_choices:choices??null
 });
+// Meetings (deployment/schema/015): one saved record per meeting code; each role saves only its own part.
+cloud.saveMeeting=(meetingId,meetingDate,patch,expectedUpdatedAt)=>request('/rest/v1/rpc/hdg_save_meeting',{
+ p_meeting_id:meetingId,p_meeting_date:meetingDate||null,p_patch:patch,p_expected_updated_at:expectedUpdatedAt||null
+});
+cloud.listMeetings=(club,from,meetingId)=>request('/rest/v1/rpc/hdg_meetings_list',{p_club:club||null,p_from:from||null,p_meeting_id:meetingId||null});
+cloud.meetingAccess=meetingId=>request('/rest/v1/rpc/hdg_my_meeting_access',{p_meeting_id:meetingId});
+cloud.accountId=()=>session&&session.user&&session.user.id||'';
 function redirectUrl(){return location.protocol==='file:'?'http://localhost:3000/':location.origin+location.pathname;}
 async function sendPasswordReset(){
  const input=el('hdg-email');if(!input.reportValidity())return;
@@ -398,6 +405,8 @@ async function apply(row){
   await baseSave(JSON.stringify(canonicalStoragePayload(db)),canonicalStoragePayload(db),{allowEmpty:false});
   normalizeDashboardRoleState();applyDashboardUser();render();
  }finally{applying=false;}
+ // The meeting sync (deployment/hosted-meetings.js) re-applies saved meetings over an older shared copy.
+ for(const hook of cloud.afterRemoteApply){try{hook();}catch(_){}}
 }
 /* Temporary access (deployment/schema/010): a leader whose division is still being set up sees its status
    (clubs and areas loaded, members imported or not) instead of "no access". Counts only; built with textContent. */
@@ -441,7 +450,7 @@ async function connect(){
   if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
   await readState();
   el('hdg-auth-message').textContent='Opening Hello Division G…';
-  const app=await currentAppFile('community','v659-community.html');
+  const app=await currentAppFile('community','v660-community.html');
   const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
   if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="'+app.release+'";'))throw new Error('The protected app file is not a connected '+app.release.replace('-community','')+' build.');
   global.HDG_ENTRY_LOADER=false;

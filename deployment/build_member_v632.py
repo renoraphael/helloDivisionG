@@ -37,7 +37,8 @@ assert sha256(original).hexdigest() in (
  "1b401c3fb8032d7f79f687bfa19f92db2992f62494000b407e38a4aaa6df0695",
  "210b076e56daf88efcda3a390f23b90eb7736f829fbf25343cebaed8fc4f6492",
  "df8f81cc35415cfd87293a1f4f5bc545cde9d1435c4ee4712ab862f998f14cb7",
- "0d1a13ece25a96c912648d8db053941f702f417ff9b9372a22fdb68dac646454")
+ "0d1a13ece25a96c912648d8db053941f702f417ff9b9372a22fdb68dac646454",
+ "76842a769b1808e6f34c65699414a3395ae74fb73c252d02b14a22dd019fba62")
 source=original.decode()
 known_rows=[]
 for key in ('memberRecords','officerRecords'):
@@ -434,6 +435,15 @@ source=''.join(sections)
 
 # Stored poster/contact defaults are filled from the user's drafts at run time.
 source=re.sub(r"((?<![\w])(?:contactName|contactValue|clubPosterContactName|clubPosterContactValue|clubPosterInstagram)\s*:\s*)(['\"])(?:\\.|(?!\2)[^\\\r\n])*?\2",lambda m:m[1]+"''",source)
+# From v660 the Member build saves meetings online too: a member who is Timer, Ballot Counter or Table Topics Master
+# in a meeting's agenda saves that part; club officers save the whole meeting (deployment/schema/015).
+release=re.search(r'<title>Hello Division G! v(\d+)</title>',source[:200000])
+if release and int(release.group(1))>=660:
+ meetings_js=(root/'deployment/hosted-meetings.js').read_text()
+ assert '</script' not in meetings_js.lower()
+ before,close,after=source.rpartition('</body>')
+ assert close,'Expected a closing body tag.'
+ source=before+'<script id="hdg-hosted-meetings">'+meetings_js+'</script>\n'+close+after
 args.output.parent.mkdir(parents=True,exist_ok=True)
 args.output.write_text(source)
 print('Local staging build:',len(source),'characters')
