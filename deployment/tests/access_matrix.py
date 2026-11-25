@@ -493,13 +493,15 @@ for r in ('outsider', 'member_k', 'signed_out'):
     s, _ = rpc('hdg_save_meeting', T[r], {'p_meeting_id': MID, 'p_meeting_date': TODAY, 'p_patch': {'agenda': {}}, 'p_expected_updated_at': None})
     check(f'{r} cannot save the meeting', s != 200, str(s))
 s, acc = rpc('hdg_my_meeting_access', T['past_ad'], {'p_meeting_id': MID})
-check('today\'s Timer gets the timer and nothing else', isinstance(acc, dict) and acc.get('canSaveTimer') and not acc.get('canSaveBallots')
-      and not acc.get('canEditAgenda') and not acc.get('canSeeResults'), str(acc)[:200])
+check('today\'s Timer (from another club) runs the tools, fixes only their own line, adds ballots without seeing results',
+      isinstance(acc, dict) and acc.get('canSaveTimer') and acc.get('canSaveTopics') and acc.get('ballots') == 'append'
+      and acc.get('agenda') == 'own' and not acc.get('canSeeResults') and not acc.get('leader'), str(acc)[:200])
 s, acc = rpc('hdg_my_meeting_access', T['cross'], {'p_meeting_id': MID})
 check('today\'s Ballot Counter (name with a club suffix) gets the ballot and results', isinstance(acc, dict) and acc.get('canSaveBallots')
-      and acc.get('canSeeResults') and not acc.get('canSaveTimer'), str(acc)[:200])
+      and acc.get('ballots') == 'replace' and acc.get('canSeeResults') and acc.get('agenda') == 'own', str(acc)[:200])
 s, acc = rpc('hdg_my_meeting_access', T['past_member'], {'p_meeting_id': MID})
-check('the Toastmaster of the Meeting sees results but saves nothing', isinstance(acc, dict) and acc.get('canSeeResults') and not acc.get('canSaveBallots'), str(acc)[:200])
+check('the Toastmaster of the Meeting edits the whole agenda and sees results', isinstance(acc, dict) and acc.get('agenda') == 'full'
+      and acc.get('canSeeResults') and acc.get('ballots') == 'replace', str(acc)[:200])
 cur = again.get('updated_at')
 s, t1 = save_meeting('past_ad', MID, {'timer_log': [{'id': 'time-1', 'person': 'Speaker', 'seconds': 400}]}, cur)
 check('the Timer saves the timer times', s == 200 and t1.get('applied'), str(t1)[:120])
@@ -507,9 +509,12 @@ s, b1 = save_meeting('cross', MID, {'ballots': [{'id': 'ballot-1', 'prepared': '
 check('the Ballot Counter saves at the same time without overwriting the timer (both kept)', s == 200 and b1.get('applied') and not b1.get('set_aside'), str(b1)[:120])
 row = sql(f"select jsonb_array_length(timer_log) t, jsonb_array_length(ballots) b from public.hdg_meetings where meeting_id = '{MID}'")[0]
 check('timer times and ballots are both in the meeting', row == {'t': 1, 'b': 1}, str(row))
-for r, patch in (('past_ad', {'ballots': []}), ('past_ad', {'agenda': {}}), ('cross', {'timer_log': []}), ('past_member', {'ballots': []}), ('past_ad', {'downloaded': True})):
+for r, patch in (('member_k', {'timer_log': []}), ('outsider', {'ballots': []}), ('member_k', {'agenda': {}})):
     s, _ = save_meeting(r, MID, patch, None)
-    check(f'{r} cannot save {list(patch)[0]} (another role\'s part)', s != 200, str(s))
+    check(f'{r} (another club, no role) cannot save {list(patch)[0]}', s != 200, str(s))
+s, helper = save_meeting('past_ad', MID, {'ballots': []}, None)
+row = sql(f"select jsonb_array_length(ballots) b from public.hdg_meetings where meeting_id = '{MID}'")[0]
+check('a helper sending an empty ballot list removes nobody\'s ballots', s == 200 and row['b'] == 1, f'{helper} {row}')
 s, late = save_meeting('officer', MID, {'agenda': {'theme': 'Late copy', 'roles': ROLES_TODAY}}, first.get('updated_at'))
 row = sql(f"select agenda->>'theme' t from public.hdg_meetings where meeting_id = '{MID}'")[0]
 check('a late agenda save answers normally, keeps the newer agenda and sets the late one aside', s == 200 and late.get('set_aside') == ['agenda']
@@ -527,7 +532,8 @@ NEXT = sql("select (hdg_sync_private.today())::text d")[0]['d']
 MID2 = f'agenda-9000001-{NEXT}-b'
 save_meeting('officer', MID2, {'agenda': {'roles': {'timer': 'Test Cross', 'ballotCounter': 'Test Past Ad'}}})
 s, acc = rpc('hdg_my_meeting_access', T['past_ad'], {'p_meeting_id': MID2})
-check('roles follow each meeting: the same member is Ballot Counter in another meeting', isinstance(acc, dict) and acc.get('canSaveBallots') and not acc.get('canSaveTimer'), str(acc)[:160])
+check('roles follow each meeting: the same member is Ballot Counter in another meeting', isinstance(acc, dict) and acc.get('roles') == ['ballotCounter']
+      and acc.get('ballots') == 'replace' and acc.get('canSeeResults'), str(acc)[:160])
 OLD = sql("select (hdg_sync_private.today() - 10)::text d")[0]['d']
 MID3 = f'agenda-9000001-{OLD}'
 save_meeting('officer', MID3, {'agenda': {'roles': {'timer': 'Test Past Ad'}}}, None, OLD)
@@ -537,8 +543,59 @@ sql(f"update public.hdg_people set nickname = 'Twin' where id in ('00000000-0000
 MID4 = f'agenda-9000001-{TODAY}-twin'
 save_meeting('officer', MID4, {'agenda': {'roles': {'timer': 'Twin'}}})
 s, acc = rpc('hdg_my_meeting_access', T['cross'], {'p_meeting_id': MID4})
-check('a name that fits two members gives nobody the role', isinstance(acc, dict) and not acc.get('canSaveTimer'), str(acc)[:160])
+check('a name that fits two members gives nobody the role', isinstance(acc, dict) and 'timer' not in (acc.get('roles') or []), str(acc)[:160])
 sql("update public.hdg_people set nickname = null where nickname = 'Twin'")
+
+# 016: own agenda lines, the Toastmaster's agenda, club members signing up and stepping in.
+def meeting(mid):
+    return sql(f"select agenda, ballots from public.hdg_meetings where meeting_id = '{mid}'")[0]
+MID6 = f'agenda-9000001-{TODAY}-own'
+base = {'theme': 'Stored theme', 'roles': {'timer': 'Test Past Ad', 'ballotCounter': 'Test Officer', 'tom': 'Test Past Member'},
+        'speakers': [{'name': 'Test Past Ad', 'title': 'Old title', 'evaluator': 'Test Officer'}, {'name': 'Test Officer', 'title': 'Officer speech'}]}
+s, m6 = save_meeting('officer', MID6, {'agenda': base})
+try_agenda = {'theme': 'Changed by the Timer',
+              'roles': {'timer': 'Test Past Ad (Area)', 'ballotCounter': 'Test Past Ad', 'tom': 'Test Past Member', 'ge': 'Test Past Ad'},
+              'speakers': [{'name': 'Test Past Ad', 'title': 'My new title', 'evaluator': 'Test Past Ad'}, {'name': 'Test Officer', 'title': 'Edited by someone else'}]}
+s, own = save_meeting('past_ad', MID6, {'agenda': try_agenda}, m6.get('updated_at'))
+a = meeting(MID6)['agenda']
+check('a role taker\'s agenda save is answered normally and reported as trimmed', s == 200 and own.get('applied') and own.get('trimmed') == ['agenda'], str(own)[:160])
+check('a role taker fixes their own speech title and role spelling', a['speakers'][0]['title'] == 'My new title' and a['roles']['timer'] == 'Test Past Ad (Area)', str(a)[:200])
+check('a role taker signs up for an empty role', a['roles'].get('ge') == 'Test Past Ad', str(a['roles']))
+check('a role taker cannot change the theme, another person\'s role, speech or evaluator part',
+      a['theme'] == 'Stored theme' and a['roles']['ballotCounter'] == 'Test Officer' and a['speakers'][1]['title'] == 'Officer speech'
+      and a['speakers'][0]['evaluator'] == 'Test Officer', str(a)[:240])
+cur6 = sql(f"select updated_at::text u from public.hdg_meetings where meeting_id = '{MID6}'")[0]['u']
+s, tm = save_meeting('past_member', MID6, {'agenda': dict(a, theme='Toastmaster theme')}, cur6)
+check('the Toastmaster of the Meeting changes the whole agenda', s == 200 and meeting(MID6)['agenda']['theme'] == 'Toastmaster theme', str(tm)[:120])
+# A club member with no role in the meeting.
+MID5 = f'agenda-9000001-{TODAY}-open'
+s, m5 = save_meeting('officer', MID5, {'agenda': {'theme': 'Open meeting', 'roles': {'timer': ''}, 'speakers': []}})
+s, acc = rpc('hdg_my_meeting_access', T['cross'], {'p_meeting_id': MID5})
+check('a club member without a role reads the meeting, signs up and steps in, but sees no results',
+      isinstance(acc, dict) and acc.get('clubMember') and acc.get('agenda') == 'own' and acc.get('canSaveTimer')
+      and acc.get('ballots') == 'append' and not acc.get('canSeeResults'), str(acc)[:200])
+s, su = save_meeting('cross', MID5, {'agenda': {'theme': 'Member theme', 'roles': {'timer': 'Test Cross'}, 'speakers': [{'name': 'Test Cross', 'title': 'My speech', 'evaluator': 'Test Officer'}]}}, m5.get('updated_at'))
+a = meeting(MID5)['agenda']
+check('a club member puts themselves into an empty role and a new speaker line', a['roles'].get('timer') == 'Test Cross'
+      and len(a['speakers']) == 1 and a['speakers'][0]['title'] == 'My speech' and 'evaluator' not in a['speakers'][0], str(a)[:200])
+check('a club member cannot change the theme', a['theme'] == 'Open meeting', a.get('theme'))
+for r in ('past_ad', 'outsider', 'member_k'):
+    s, acc = rpc('hdg_my_meeting_access', T[r], {'p_meeting_id': MID5})
+    check(f'{r} (other club, no role) gets nothing in the club\'s meeting', isinstance(acc, dict) and acc.get('agenda') == 'none'
+          and not acc.get('canSaveTimer') and acc.get('ballots') == 'none' and not acc.get('read'), str(acc)[:160])
+    s, _ = save_meeting(r, MID5, {'agenda': {'roles': {'ge': 'Test Past Ad'}}}, None)
+    check(f'{r} cannot sign up in another club\'s meeting', s != 200, str(s))
+s, h1 = save_meeting('cross', MID5, {'ballots': [{'id': 'ballot-h1', 'prepared': 'p0'}], 'timer_log': [{'id': 'time-h1', 'seconds': 300}]}, None)
+cur5 = sql(f"select updated_at::text u from public.hdg_meetings where meeting_id = '{MID5}'")[0]['u']
+s, h2 = save_meeting('officer', MID5, {'ballots': [{'id': 'ballot-h1', 'prepared': 'p0'}, {'id': 'ballot-o1', 'prepared': 'p0'}]}, cur5)
+s, h3 = save_meeting('cross', MID5, {'ballots': [{'id': 'ballot-h2', 'prepared': 'p0'}]}, None)
+check('a stepping-in member adds ballots without removing others', len(meeting(MID5)['ballots']) == 3, str(meeting(MID5)['ballots'])[:160])
+s, lst = rpc('hdg_meetings_list', T['cross'], {'p_meeting_id': MID5})
+check('a stepping-in member does not see the ballots', isinstance(lst, list) and lst[0]['ballots'] == [], str(lst)[:120])
+s, lst = rpc('hdg_meetings_list', T['cross'], {'p_meeting_id': MID3})
+check('a club member reads the club\'s recent meetings', isinstance(lst, list) and len(lst) == 1, str(lst)[:80])
+s, lst = rpc('hdg_meetings_list', T['past_ad'], {'p_meeting_id': MID3})
+check('a role taker from another club no longer reads a past meeting', lst == [], str(lst)[:80])
 # Phone votes: one ballot per meeting, whoever publishes.
 CH = {'prepared': [{'id': 'p0', 'name': 'Speaker One'}], 'evaluation': [], 'topics': []}
 s, pub = rpc('hdg_manage_ballot', T['officer'], {'p_meeting_id': MID, 'p_action': 'publish', 'p_title': 'Test ballot', 'p_choices': CH})

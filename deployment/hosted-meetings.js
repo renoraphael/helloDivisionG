@@ -5,17 +5,23 @@
     operator, the timer and the ballot counter can save at the same time from their own accounts. Leaders save every
     part; a member who holds a role in that meeting's agenda saves only that role's part (the server checks this).
     A copy that arrives late is set aside on the server and on this device, never merged over newer work.
-    Used by the Leader and the Member builds; no member records are stored here. */
+    From v661 (schema 016) every role taker fixes their own agenda line, the Toastmaster of the Meeting edits the whole
+    agenda, and club members put themselves into empty roles and step in on the meeting day; each meeting arrives with
+    the reader's rights, so the app sends only the parts that count. Used by the Leader and the Member builds; no
+    member records are stored here. */
  const cloud=window.HDGCloud;
  if(!cloud||typeof cloud.saveMeeting!=='function'||typeof agendaStore!=='function'||typeof agendaMeetingToolData!=='function')return;
  const FIELDS=['agenda','timer_log','ballots','topics'];
- const ROLE_FIELD={timer:'timer_log',ballotCounter:'ballots',ttm:'topics'};
- const ROLE_LABEL={timer:'Timer',ballotCounter:'Ballot Counter',ttm:'Table Topics Master',tom:'Toastmaster of the Meeting'};
+ const ROLE_LABEL={timer:'Timer',ballotCounter:'Ballot Counter',ttm:'Table Topics Master',tom:'Toastmaster of the Meeting',
+  ge:'General Evaluator',grammarian:'Grammarian',ahCounter:'Ah-Counter',tableTopicsEvaluator:'Table Topics Evaluator',saa:'Sergeant at Arms',
+  president:'presiding officer',actingPresident:'acting President',actingSaa:'acting Sergeant at Arms',guestGreeter:'Guest Greeter',
+  registration:'registration host',documentation:'documentation host',speaker:'a speaker',evaluator:'an evaluator'};
  const ID=/^agenda-0*[1-9][0-9]*-[A-Za-z0-9-]{1,90}$/;
  const DAY=/^\d{4}-\d{2}-\d{2}$/;
  const WINDOW_DAYS=120;
  let state=null,stateKey='',busy=false,again=false,timer=0,forceServer=false,lastError='';
- const server=new Map();      // meeting id -> myRoles from the last list ([] means full access)
+ const server=new Map();      // meeting id -> this account's rights from the last list (deployment/schema/016)
+ const cooldown=new Map();    // meeting id -> time before which an own-line agenda is not resent after a trimmed save
  const denied=new Map();      // meeting id -> hash of the patch the server refused (not retried until it changes)
 
  // Key order is not kept by the database, so parts are compared with sorted keys.
@@ -66,11 +72,12 @@
   return agendaStore().filter(r=>r&&ID.test(String(r.id||''))&&DAY.test(String(r.meetingDate||''))&&r.meetingDate>=from);
  }
  function allowedFields(id){
-  const roles=server.get(id);
-  if(!roles||!roles.length)return FIELDS;           // full access, or not saved online yet (the server decides)
-  return roles.map(r=>ROLE_FIELD[r]).filter(Boolean);
+  const rights=server.get(id);
+  if(!rights)return FIELDS;                          // not saved online yet: only a leader can create it (the server decides)
+  return FIELDS.filter(f=>f==='agenda'?rights.agenda&&rights.agenda!=='none':f==='ballots'?rights.ballots&&rights.ballots!=='none':rights[f]===true);
  }
- function canSeeBallots(id){const roles=server.get(id);return !roles||!roles.length||roles.includes('ballotCounter')||roles.includes('tom');}
+ function canSeeBallots(id){const rights=server.get(id);return !rights||rights.seeBallots===true;}
+ function canMarkDownload(id){const rights=server.get(id);return !rights||rights.downloaded===true;}
  function persistQuietly(){
   try{if(typeof persistLocalState==='function')persistLocalState();}catch(error){console.warn('Meeting copy not kept on this device',error);}
  }
@@ -114,7 +121,7 @@
   for(const row of rows||[]){
    const id=String(row.meetingId||'');
    if(!ID.test(id))continue;
-   server.set(id,Array.isArray(row.myRoles)?row.myRoles:[]);
+   server.set(id,row.rights&&typeof row.rights==='object'?row.rights:{leader:true,agenda:'full',timer_log:true,topics:true,ballots:'replace',seeBallots:true,downloaded:true,roles:[]});
    const st=state.m[id]||(state.m[id]={u:'',h:{}});
    if(!force&&st.u===row.updatedAt)continue;
    // Leave the meeting someone is typing into; the next check picks it up.
@@ -155,10 +162,11 @@
    const id=record.id,st=state.m[id]||(state.m[id]={u:'',h:{}});
    const mine=local(record),allowed=allowedFields(id),patch={},hashes={};
    for(const field of allowed){
+    if(field==='agenda'&&server.get(id)?.agenda==='own'&&(cooldown.get(id)||0)>Date.now())continue;
     const h=hash(mine[field]);
     if(h!==st.h[field]&&!(empty(mine[field])&&!st.h[field])){patch[field]=mine[field];hashes[field]=h;}
    }
-   if(st.dl&&!st.dlSent)patch.downloaded=true;
+   if(st.dl&&!st.dlSent&&canMarkDownload(id))patch.downloaded=true;
    if(!Object.keys(patch).length)continue;
    const patchHash=hash(patch);
    if(denied.get(id)===patchHash)continue;
@@ -174,10 +182,13 @@
    for(const field of Object.keys(hashes))if(!late.includes(field))st.h[field]=hashes[field];
    if(patch.downloaded)st.dlSent=true;
    if(result?.updated_at&&!late.length)st.u=result.updated_at;
-   if(!server.has(id))server.set(id,[]);
+   if(!server.has(id))server.set(id,{leader:true,agenda:'full',timer_log:true,topics:true,ballots:'replace',seeBallots:true,downloaded:true,roles:[]});
+   // An agenda change that was not this person's to make comes back as "trimmed": show the stored agenda, keep theirs aside.
+   const trimmed=(Array.isArray(result?.trimmed)?result.trimmed:[]).filter(f=>f!=='ballots');
+   if(trimmed.length)cooldown.set(id,Date.now()+20000);
    store();
-   if(late.length){
-    // Someone saved newer work first: show theirs here and keep this copy aside.
+   if(late.length||trimmed.length){
+    // Someone saved newer work first, or part of the change was not this person's: show the stored copy, keep this one aside.
     const rows=await cloud.listMeetings(null,null,id);
     st.u='';
     adopt(rows,{force:false});
@@ -232,13 +243,20 @@
   let text='';
   if(lastError)text=lastError;
   else if(record&&ID.test(record.id)){
-   const roles=server.get(record.id);
-   if(roles&&roles.length){
-    const names=roles.map(r=>ROLE_LABEL[r]).filter(Boolean).join(' and ');
-    const saves=roles.map(r=>({timer:'your times',ballotCounter:'the ballots you enter',ttm:'the Table Topics names'})[r]).filter(Boolean);
-    text='You are the '+names+' for this meeting.'+(saves.length?' '+saves.join(' and ').replace(/^./,c=>c.toUpperCase())+' are saved online for this meeting.':'')+' Other parts stay on this device.';
-   }else if(roles)text='Saved online for this meeting. Everyone running it sees the same agenda, times and ballots.';
-   else if(denied.has(record.id))text='This meeting stays on this device. Only the club’s leaders and that meeting’s role takers save it online.';
+   const rights=server.get(record.id);
+   if(rights&&rights.leader)text='Saved online for this meeting. Everyone running it sees the same agenda, times and ballots.';
+   else if(rights&&(rights.agenda!=='none'||rights.timer_log||rights.ballots!=='none')){
+    const roles=(rights.roles||[]).map(r=>ROLE_LABEL[r]||r);
+    const who=roles.length?'You are '+roles.map(r=>/^(a|an|the|acting) /.test(r)?r:'the '+r).join(' and ')+' in this meeting.':'You are a member of this club.';
+    const can=[];
+    if(rights.agenda==='full')can.push('change this meeting’s agenda');
+    else if(rights.agenda==='own')can.push('fix your own agenda line or put yourself into an empty role or a new speaker line');
+    if(rights.timer_log)can.push('save timer times and Table Topics names');
+    if(rights.ballots==='replace')can.push('enter ballots and see the results');
+    else if(rights.ballots==='append')can.push('add ballots (the results stay with the Ballot Counter and the Toastmaster)');
+    text=who+' You can '+can.join(', ')+'. Saved online for everyone running this meeting; anything else you change stays on this device.';
+   }
+   else if(rights||denied.has(record.id))text='This meeting stays on this device. Only the club’s officers, its members and that meeting’s role takers save it online.';
   }
   box.textContent=text;
   box.hidden=!text;
@@ -257,6 +275,15 @@
  document.addEventListener('click',event=>{
   if(event.target?.closest?.('[data-community-panel="meetingTools"]'))setTimeout(note,0);
  });
+ // Some app paths redraw Meeting Tools without the hooks above; keep the note current while it is on screen.
+ let noted='';
+ setInterval(()=>{
+  const summary=document.getElementById('meetingToolsMeetingSummary');
+  if(!summary||document.hidden||!summary.offsetParent)return;
+  const id=(typeof communityAgendaCurrentRecord==='function'?communityAgendaCurrentRecord()?.id:'')||'';
+  const box=document.getElementById('hdgMeetingShareNote');
+  if(id!==noted||!box||box.previousElementSibling!==summary){noted=id;note();}
+ },1500);
 
  // Check for other people's saves every 30 seconds, when the page comes back, and when the connection returns.
  const start=()=>{if(load())run();else setTimeout(start,2000);};
@@ -264,5 +291,5 @@
  setInterval(()=>{if(!document.hidden)run();},30000);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)soon(300);});
  window.addEventListener('online',()=>soon(300));
- window.HDGMeetings={run,state:()=>state,roles:id=>server.get(id)||null};
+ window.HDGMeetings={run,state:()=>state,rights:id=>server.get(id)||null,roles:id=>server.get(id)?.roles||null};
 })();

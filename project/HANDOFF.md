@@ -14,6 +14,12 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
+## v661 meeting rights (25 November 2026), not live
+- deployment/schema/016_meeting_rights.sql (test project only): meeting_rights() per meeting; merge_own_agenda() keeps the stored agenda and takes over only the person's own changes (their role spelling, an empty role set to them, their speaker line or evaluator part, a new speaker line in their name); helpers' ballots are appended under the row lock and never count as late. hdg_meetings_list returns `rights` per meeting; saves return `trimmed`.
+- hosted-meetings.js follows `rights`: sends only allowed parts, adopts the stored agenda after a trimmed save (local copy kept aside) and waits 20 s before resending an own-line agenda.
+- access_matrix.py: 288/288 after a clean setup_test_project.py (it must be reset before each run, or about nine older checks fail on leftover state). Browser-tested with test accounts: Timer fixes their own line and signs up as GE, theme change trimmed; a club member adds themselves as a speaker; the leader sees both.
+- Going live: 015 then 016 in production (permission snapshot diff), v661 uploads plus storage-policy-v661.sql, release switch. Owner approval needed.
+
 ## v660 meeting sync (25 November 2026), not live
 - deployment/hosted-meetings.js is added to the Leader build (build_connected_app.py, v660) and the Member and Division K builds (build_member_v632.py, offline title v660 or later). It saves each meeting through hdg_save_meeting, part by part, compares parts with sorted keys, loads with hdg_meetings_list every 30 s, and keeps late local copies in localStorage hdg.meetings.setaside.v1. Role takers only send their own part; the server enforces it.
 - docs/cloud-sync.js: saveMeeting, listMeetings, meetingAccess, accountId, and an afterRemoteApply hook, so an older shared snapshot never overwrites saved meetings.
