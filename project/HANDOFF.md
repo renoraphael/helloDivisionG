@@ -14,7 +14,8 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
-## v663 pop-up editors (25 November 2026), built, not live
+## v663 pop-up editors (25 November 2026), LIVE
+- Owner approved "make it live and merge" on 25 Nov 2026: v663 leader/member files and .gz uploaded and verified by download, storage-policy-v663.sql applied, hdg_releases current = v663 for community and member; real leader and member accounts each read only their own file, both can list meetings. Division K file not uploaded (013/014 still wait for production).
 - Owner requests: editors were hard to use and opened at the top of the page; manual "add" should stay only where no Toastmasters import covers it; club Exco must be changeable before the next officer list.
 - Source: deployment/app-patches/v663/editors.js and editors.css; `python3 deployment/app-patches/make_v663.py <v662 file> <out> <v662 sha256>` rebuilds the offline file byte for byte. One block, `<script id="v663-event-editors">` plus its style, before </body>.
 - Shared <dialog>: `#v663Editor` (TLI, contests, members, Exco) and `#v663ClubDlg` (wraps the existing #clubForm, so its own save still runs). Overrides window.editTli, openTliEditorNew, editContest, editClub, editMemberRecord, editOfficerRecord, renderTlis, renderContestSchedule. Old <details> editors get class v663-retired.
@@ -24,7 +25,6 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - Access gap found (not changed): club officer access (meeting rights, 016) comes from hdg_roles, which was copied from the Exco list once (005) and is changed only through hdg_assign_role/hdg_end_role by directors; no app screen calls them. Editing Exco in the app does not change anyone's access. Club self-service Exco needs a schema change (owner decisions pending).
 - Production data on 25 Nov (owner request, through the signed-in leader app, revision 28): Main TLI 2 — Surabaya Completed (24 attended, 4 clubs, 13 officers; 16 seats tli2=true, other 40 G1/G2 seats false), as the v615 one-off had only ever run offline (the hosted build strips it). Area contest dates 21 Mar 2027 (G1 & G2) and 27 Mar 2027 (G3 & G4); Division contest Chair Dyah Noormila Putri, Chief Judge Christopher Halim.
 - Tested: offline file in the browser pane (desktop, phone width, classic and maroon themes): TLI save and revert, attendance counts, contest readiness, club/member/officer saves leave stored fields unchanged, member duplicate guard, add/remove officer. Hosted leader build against the test project: contest and officer added and removed through the editors, synced (rev 1009 to 1013). No console errors.
-- Going live: upload v663 leader/member (.gz too), storage-policy-v663.sql, release switch, merge for the launcher. Owner approval needed.
 
 ## v662 sync recovery fix (25 November 2026), LIVE
 - Owner approved "live and merge" on 25 Nov 2026: v662 leader/member files and .gz uploaded and verified by download, storage-policy-v662.sql applied, hdg_releases current = v662; real leader and member accounts each read only their own file.
