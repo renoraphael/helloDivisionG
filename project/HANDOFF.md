@@ -14,7 +14,8 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
-## v662 sync recovery fix (25 November 2026), built, not live
+## v662 sync recovery fix (25 November 2026), LIVE
+- Owner approved "live and merge" on 25 Nov 2026: v662 leader/member files and .gz uploaded and verified by download, storage-policy-v662.sql applied, hdg_releases current = v662; real leader and member accounts each read only their own file.
 - Cause of the stuck leader saves (20-25 Nov): the owner's usual browser recovered an unsynced draft at sign-in, which set queue.conflict and paused every save; SyncQueue.enqueue then overwrote the conflict status with "waiting to sync" (kind ok), hiding the pill. Owner downloaded the draft on 25 Nov; it matched shared revision 25 (nothing lost; the 24 Nov meeting with 11 times, 1 ballot, 4 topics is in shared state and in hdg_meetings).
 - docs/cloud-sync.js: newest draft first; a draft equal to the shared copy (sorted keys, built-in logo assets ignored) is cleared; a draft on the current revision is applied on screen and sent; otherwise the choice as before. Older drafts are copied to cloud-recovery-* before clearing. enqueue keeps the conflict status.
 - Tested in the test project (browser pane): equal draft cleared, current-revision draft sent (rev 1007, 1008), older-base draft asks and the warning survives a new edit, older draft kept in recovery.
