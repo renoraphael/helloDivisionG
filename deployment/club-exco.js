@@ -181,12 +181,19 @@ async function sendImport(date){
    if((res.kept||[]).length){const ex=await cloud().clubExco(club).catch(()=>null);n+=reconcile(club,ex,null);}
   }catch(_){}
  }
- if(n){try{updateOfficerCounts();}catch(_){}saveData();try{render();}catch(_){}}
+ db.database=db.database||{};const had=db.database.excoUnmatched||0;db.database.excoUnmatched=unmatched.length;
+ if(n||had!==unmatched.length){try{updateOfficerCounts();}catch(_){}saveData();try{render();}catch(_){}}
  const parts=[];
  if(kept.length)parts.push(`Kept ${kept.length} newer club change${kept.length===1?'':'s'} (${kept.join(', ')}).`);
  if(unmatched.length)parts.push(`${unmatched.length} officer${unmatched.length===1?' is':'s are'} not in the member list yet, so ${unmatched.length===1?'their':'their'} officer access waits for the next membership import (${unmatched.join(', ')}).`);
  if(parts.length&&typeof window.showDataSafetyNotice==='function')window.showDataSafetyNotice(parts.join(' '),kept.length?'warn':'good');
 }
+/* After a member list import: officers who were not in the member list yet get their seat now (same newer-wins rule). */
+window.hdgExcoResend=function(){
+ const imp=(db.officerImports||[])[0];
+ if(!imp||!(db.database&&db.database.excoUnmatched))return Promise.resolve();
+ return sendImport(imp.date).catch(()=>{});
+};
 /* A leader adds or changes an officer in the directory: give the seat's access too when the person is in the
    club's member list. */
 window.hdgExcoLeaderSaved=async function(rec){
