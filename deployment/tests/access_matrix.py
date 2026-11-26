@@ -685,7 +685,74 @@ sql(f"delete from public.hdg_roles where scope_type = 'club' and scope_code = '{
     f"values ('{P['officer']}', 'club_president', 'club', '{C1}', 2026, make_date(2026, 7, 1), make_date(2027, 6, 30)); "
     f"delete from public.hdg_import_freshness where club_number = '{C1}' and kind = 'officers'")
 
-failed = [r for r in results if not r[0]]
+# 018: member list import into the per-record tables. Leaders of the club only; city only; member ID match;
+# hand-corrected fields are asked about; newest list wins; snapshot marks missing members as past; undo.
+C2 = '9000002'
+def imp(r, rows, as_of=None, snap=True, club=C2):
+    return rpc('hdg_import_club_members', T[r], {'p_club': club, 'p_as_of': as_of or YDAY, 'p_rows': rows, 'p_snapshot': snap})
+def mstatus(k, club=C2):
+    x = sql(f"select status from public.hdg_memberships where person_id = '{P[k]}' and club_number = '{club}'")
+    return x[0]['status'] if x else None
+def joiner():
+    return sql("select p.id, p.ti_member_id, m.status from public.hdg_people p left join public.hdg_memberships m on m.person_id = p.id "
+               "where ltrim(p.ti_member_id, '0') = '1234567'")
+sql(f"update public.hdg_people set hand_corrected = '{{\"name\": {{\"value\": \"Hand Name\"}}}}' where id = '{P['dd_g']}'")
+NAME_DDG = sql(f"select name from public.hdg_people where id = '{P['dd_g']}'")[0]['name']
+ROWS = [{'memberId': mid('dd_g'), 'name': 'TI Spelling Of DD', 'active': True},
+        {'memberId': mid('past_ad'), 'name': 'Test Past AD', 'active': False, 'paidUntil': '2026-09-30'},
+        {'memberId': '1234567', 'name': 'Test New Joiner', 'email': 'NEW.JOINER@example.com ', 'city': 'Denpasar', 'active': True, 'joinedOn': '2026-11-20'},
+        {'memberId': '', 'name': 'No ID Row'}]
+for r in ('member', 'cross', 'past_ad', 'ad_g1', 'member_k', 'signed_out'):
+    s, _ = imp(r, ROWS) if r != 'signed_out' else rpc('hdg_import_club_members', None, {'p_club': C2, 'p_as_of': YDAY, 'p_rows': ROWS, 'p_snapshot': True})
+    check(f'018 {r} cannot import this club\'s member list', s != 200, str(s))
+s, _ = imp('dd_g', [{'memberId': '1234567', 'name': 'X', 'phone': '0812'}])
+check('018 a row with a phone number is refused (city only)', s != 200, str(s))
+s, _ = imp('dd_g', [{'memberId': '1234567', 'name': 'X', 'address': 'Jl. Test 1'}])
+check('018 a row with a street address is refused', s != 200, str(s))
+s, _ = imp('dd_g', ROWS, as_of=sql("select (hdg_sync_private.today() + 1)::text d")[0]['d'])
+check('018 a list dated in the future is refused', s != 200, str(s))
+s, res = imp('dd_g', ROWS)
+j = joiner()
+check('018 the Division Director imports the club\'s list', s == 200 and res.get('newPeople') == 1 and res.get('skipped') == 1, str(res)[:200])
+check('018 a new joiner gets a person (member ID padded to 8 digits) and an active membership',
+      len(j) == 1 and j[0]['ti_member_id'] == '01234567' and j[0]['status'] == 'active', str(j))
+nj = sql("select email, city from public.hdg_people where ti_member_id = '01234567'")
+check('018 email is tidied and only the city is kept', nj and nj[0]['email'] == 'new.joiner@example.com' and nj[0]['city'] == 'Denpasar', str(nj))
+check('018 a member marked not active becomes lapsed', mstatus('past_ad') == 'lapsed', str(mstatus('past_ad')))
+check('018 a member missing from the list becomes past (snapshot)', mstatus('prm') == 'past', str(mstatus('prm')))
+check('018 a hand-corrected name is kept and asked about',
+      sql(f"select name from public.hdg_people where id = '{P['dd_g']}'")[0]['name'] == NAME_DDG
+      and any(c['field'] == 'name' and c['ti'] == 'TI Spelling Of DD' for c in res.get('conflicts', [])), str(res.get('conflicts'))[:200])
+fr = sql(f"select as_of::text a from public.hdg_import_freshness where club_number = '{C2}' and kind = 'roster'")
+check('018 the list date is recorded for the club', fr and fr[0]['a'] == YDAY, str(fr))
+s, e = rpc('hdg_club_exco', T['dd_g'], {'p_club': C2})
+check('018 the new joiner can be chosen for an Exco seat at once', s == 200 and j and j[0]['id'] in [c['person'] for c in e.get('candidates', [])], str(e)[:160])
+OLDER = sql("select (hdg_sync_private.today() - 5)::text d")[0]['d']
+s, old = imp('dd_g', [{'memberId': mid('prm'), 'name': 'Test PRM', 'active': True}], as_of=OLDER)
+check('018 an older list changes nothing', s == 200 and old.get('stale') is True and mstatus('prm') == 'past', str(old)[:160])
+s, _ = rpc('hdg_undo_member_import', T['ad_g1'], {'p_import': res.get('import')})
+check('018 someone else cannot undo the import', s != 200, str(s))
+s, u = rpc('hdg_undo_member_import', T['dd_g'], {'p_import': res.get('import')})
+check('018 the importer undoes it: memberships back, new joiner gone, list date cleared',
+      s == 200 and mstatus('prm') == 'active' and mstatus('past_ad') == 'active' and not joiner()
+      and not sql(f"select 1 from public.hdg_import_freshness where club_number = '{C2}' and kind = 'roster'"), str(u))
+s, _ = rpc('hdg_undo_member_import', T['dd_g'], {'p_import': res.get('import')})
+check('018 an import is undone only once', s != 200, str(s))
+s, res = imp('dd_g', ROWS, snap=False)
+check('018 update-only mode never marks missing members as past', s == 200 and mstatus('prm') == 'active', str(res)[:160])
+s, _ = rpc('hdg_resolve_import_conflict', T['ad_g1'], {'p_person': P['dd_g'], 'p_field': 'name', 'p_ti_value': 'TI Spelling Of DD', 'p_take': True})
+check('018 a leader outside the club cannot settle its differences', s != 200, str(s))
+s, _ = rpc('hdg_resolve_import_conflict', T['dd_g'], {'p_person': P['dd_g'], 'p_field': 'name', 'p_ti_value': 'TI Spelling Of DD', 'p_take': False})
+s2, again = imp('dd_g', ROWS, snap=False)
+check('018 "keep mine" is remembered: the same difference is not asked again', s in (200, 204) and s2 == 200 and again.get('conflicts') == [], str(again)[:160])
+s, _ = rpc('hdg_resolve_import_conflict', T['dd_g'], {'p_person': P['dd_g'], 'p_field': 'name', 'p_ti_value': 'TI Spelling Of DD', 'p_take': True})
+check('018 "take TI\'s" applies the list\'s value', s in (200, 204) and sql(f"select name from public.hdg_people where id = '{P['dd_g']}'")[0]['name'] == 'TI Spelling Of DD', str(s))
+sql(f"update public.hdg_people set name = '{NAME_DDG}', hand_corrected = '{{}}' where id = '{P['dd_g']}'; "
+    f"update public.hdg_memberships set status = 'active' where club_number = '{C2}' and person_id in ('{P['prm']}', '{P['past_ad']}', '{P['dd_g']}'); "
+    "delete from public.hdg_people where ltrim(ti_member_id, '0') = '1234567'; "
+    f"delete from public.hdg_import_freshness where club_number = '{C2}'; delete from hdg_sync_private.member_imports where club_number = '{C2}'")
+
+failed =[r for r in results if not r[0]]
 for ok, name, detail in results:
     print(('PASS ' if ok else 'FAIL ') + name + (f'  [{detail}]' if not ok and detail else ''))
 print(f'\n{len(results) - len(failed)}/{len(results)} access checks passed.')
