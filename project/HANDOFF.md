@@ -14,6 +14,22 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
+## Verified Supabase environments
+
+- **Singapore production** `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`) serves v666 and is named **Hello Division G**. The owner approved the display name change on 28 November 2026.
+- **Singapore synthetic test** `oenawxeckerazwhvlpse` (`ap-southeast-1`) is **Hello Division G Synthetic Test**.
+- **Paused Seoul fallback** `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`) is **Hello Division G (Seoul, retired)**. The project remains paused.
+
+## Privacy and onboarding production release (28 November 2026)
+
+- Owner approved applying migration 020 and enabling nightly retention on Singapore production `ovmdhkrkogivlvjnbqpj`. Verified the encrypted overnight backup from 07:12 WITA and the separate practice restore with all 69 table counts matching, including Auth.
+- The migration rehearsed inside a rolled-back transaction, then committed with matching permission snapshots. It added 30 permission entries, with no change to existing grants or row-level policies and no anon or PUBLIC grants. Thirteen new public RPCs grant EXECUTE to authenticated and service_role. Nine private functions, seven private tables and one sequence have owner-only ACLs.
+- The separate pg_cron activation added 17 managed entries and changed no pre-existing privileges. Its nine object-level PUBLIC ACLs are behind cron schema USAGE, which neither anon nor authenticated has. The nightly job is active at 02:30 WITA. Its first run started and finished at 2026-11-28 07:33:43 WITA and erased 0.
+- Production role probes under rolled-back database authentication claims used real leader and member accounts and the sole maintainer. Both exports stayed account-scoped, an active member was denied full deletion, and only the maintainer could see both queues. The probes returned no individual data. The synthetic matrix passed 399/399. The fictional correction UI browser preview passed, and no iPhone build was checked.
+- The backend records consent timestamps by version, exports per-record data, clears optional details, allows roster correction requests, and runs the maintainer deletion queue with a 30-day deadline. Active club memberships block deletion. Historical officer seats and normalized awards keep the label “Former member.” Onboarding reads current roles, scope and per-account tutorial progress.
+- The plain-English notice and Your data copy are private drafts awaiting the owner's wording approval and legal or district review. There is no published notice. Division K imports remain closed. Known structured legacy matches block erasure, and the self-service export does not cover archived HTML or unstructured award and meeting history. The approved legacy cutover must address these limits.
+- The read-only production advisors previously reported 45 warnings and 34 informational items with no error-level findings. Seoul remains paused. Migration 013, migration 014 and the separate Division K build are retired for production.
+
 ## Singapore test project and v666 release (28 November 2026)
 
 - Seoul production `bhbgusdxqbjwsdlzhurb` was paused after the Singapore cutover. Singapore production `ovmdhkrkogivlvjnbqpj` serves the live launcher and ballot.

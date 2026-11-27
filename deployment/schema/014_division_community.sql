@@ -1,3 +1,4 @@
+-- RETIRED FOR PRODUCTION (owner decision 27 November 2026). Synthetic tests only.
 -- 014: the data a division app receives at sign-in (Phase 1, owner request 23 November 2026). TEST project first.
 -- Same shape as the Division G Member projection (deployment/member-v632-runtime.js reads it), built from the
 -- per-record tables: the division's clubs for the current program year (public club information from the imported

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Build the app for a division other than Division G (Phase 1; first target: Division K). Never publish its output.
+"""Build the retired separate division app for synthetic tests only.
+
+Do not release the separate Division K build. The 27 November 2026 owner decision uses one shared app.
 
 Starts from the Member build (deployment/build_member_v632.py, which already removes Division G member records,
 names, IDs and contacts) and then, following project/DISTRICT_PLAN.md rules 22-23 and the owner's decisions of

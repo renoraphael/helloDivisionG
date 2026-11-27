@@ -1,3 +1,4 @@
+-- RETIRED FOR PRODUCTION (owner decision 27 November 2026). Synthetic tests only.
 -- 013: release slots for division apps (Phase 1, owner request 23 November 2026). TEST project first.
 -- A division other than Division G gets its own app build (deployment/build_division_app.py) in channel 'division'
 -- with its division code, e.g. v655-division-k.html. Signing in with a role in that division (access mode 'setup')
