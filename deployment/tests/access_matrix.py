@@ -776,7 +776,7 @@ for r in ('dd_k', 'dd_g', 'am'):
     check(f'019 {r} cannot open a division\'s imports', s != 200, str(s))
 s, _ = rpc('hdg_set_division_import', T['admin'], {'p_division': 'K', 'p_open': True})
 check('020 Division K cannot open until a privacy notice is published', s != 200 and s != 204)
-gate_notice = 'test-gate-' + uuid.uuid4().hex
+gate_notice = 'test-gate-' + uuid.uuid4().hex[:12]
 s, _ = rpc('hdg_publish_privacy_notice', T['admin'], {'p_version': gate_notice, 'p_body': 'Fictional import gate notice.'})
 assert s in (200, 204), f'Could not publish synthetic import gate notice: HTTP {s}'
 s, _ = rpc('hdg_set_division_import', T['admin'], {'p_division': 'K', 'p_open': True})
