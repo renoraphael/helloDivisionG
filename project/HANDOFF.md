@@ -357,3 +357,10 @@ The Member Poster Generator opens without a selected club or meeting. Resume las
 - Access tests: 271/271 (36 new) after a clean `setup_test_project.py`.
 - Found while checking: no leader save has reached `hdg_sync_state` since 20 November 08:12 (revision 23), although leaders signed in and published ballots on 24 November; no error reports about it. Not diagnosed yet; needs a signed-in check of the hosted leader app (save request and its answer). Until then, agenda, timer and typed-in ballots stay on each device.
 - Not done yet: the leader and member apps do not use 015 yet; production apply needs the owner's approval.
+
+## Singapore production cutover — prepared 27 November 2026
+
+- Owner requested replacing the Singapore test project with Seoul production. The Singapore target is `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`); Seoul `bhbgusdxqbjwsdlzhurb` is retained until cutover is verified.
+- All 124 production storage objects were verified in Singapore staging. Original object paths are preserved. Historical HTML uses standard HTTP gzip encoding to fit the Free storage allowance, with identical decoded bytes. Active and prior releases retain plaintext and gzip options.
+- The launcher switches Auth, data, and ballots to Singapore, isolates sessions by project, and aligns the inline adapter for protected historical releases without rewriting archived bytes. Test and import commands guard both production refs and require a separate explicit test project.
+- Do not merge before the restored data, private storage permissions, and real account access are verified and the owner approves the live switch. v666 and migration 019 are separate.

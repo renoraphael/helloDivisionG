@@ -12,8 +12,9 @@ temporary file that only this user can read and that is deleted straight after.
 import argparse, csv, json, os, subprocess, sys, tempfile
 from pathlib import Path
 
-PRODUCTION_REF = 'bhbgusdxqbjwsdlzhurb'
-TEST_REF = os.environ.get('HDG_TEST_REF', 'ovmdhkrkogivlvjnbqpj')
+PRODUCTION_REF = 'ovmdhkrkogivlvjnbqpj'
+RETIRED_PRODUCTION_REF = 'bhbgusdxqbjwsdlzhurb'
+TEST_REF = os.environ.get('HDG_TEST_REF')
 EXPECTED = ('district division area club_number club_name dashboard_club_name program_year checked_on dashboard_suspended_since '
             'club_success_plan_submitted membership_base membership_to_date membership_net_growth dcp_goals_met '
             'dcp_1_level1_awards_target_4 dcp_2_level2_awards_target_2 dcp_3_additional_level2_awards_target_2 '
@@ -35,8 +36,8 @@ def main():
     ap.add_argument('--production', action='store_true', help='import into production (owner approval required)')
     args = ap.parse_args()
     ref = PRODUCTION_REF if args.production else TEST_REF
-    if not args.production and ref == PRODUCTION_REF:
-        sys.exit('HDG_TEST_REF points at production; use --production explicitly.')
+    if not args.production and (not ref or ref in (PRODUCTION_REF, RETIRED_PRODUCTION_REF)):
+        sys.exit('Set HDG_TEST_REF to a separate synthetic test project, or explicitly choose --production.')
     with args.csv.open(encoding='utf-8-sig', newline='') as f:
         reader = csv.DictReader(f)
         if reader.fieldnames != EXPECTED:

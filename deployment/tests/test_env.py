@@ -7,10 +7,11 @@ import json, os, subprocess, urllib.request, urllib.error
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCTION_REF = 'bhbgusdxqbjwsdlzhurb'
-TEST_REF = os.environ.get('HDG_TEST_REF', 'ovmdhkrkogivlvjnbqpj')
-if TEST_REF == PRODUCTION_REF:
-    raise SystemExit('Refusing to run: HDG_TEST_REF points at production.')
+PRODUCTION_REF = 'ovmdhkrkogivlvjnbqpj'
+RETIRED_PRODUCTION_REF = 'bhbgusdxqbjwsdlzhurb'
+TEST_REF = os.environ.get('HDG_TEST_REF')
+if not TEST_REF or TEST_REF in (PRODUCTION_REF, RETIRED_PRODUCTION_REF):
+    raise SystemExit('Set HDG_TEST_REF to a separate synthetic test project. Both production projects are guarded.')
 URL = f'https://{TEST_REF}.supabase.co'
 LOCAL = ROOT / 'local-data' / 'test-project.json'   # git-ignored: test passwords and keys
 CLI = os.environ.get('SUPABASE_CLI', 'supabase')
@@ -62,4 +63,7 @@ def request(method, path, key, token=None, body=None, headers=None):
 
 
 def load_local():
-    return json.loads(LOCAL.read_text())
+    config = json.loads(LOCAL.read_text())
+    if config.get('project_ref') != TEST_REF:
+        raise SystemExit('Test credentials do not belong to HDG_TEST_REF.')
+    return config
