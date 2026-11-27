@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 19 November 2026 (Asia/Makassar).
+Updated 28 November 2026 (Asia/Makassar).
 
 ## Owner's objective
 Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hello Division G project without losing changes, leaking member data, or relying on one chat's memory.
@@ -13,6 +13,13 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - First-administrator preapproval and the owner's confirmed account exist. The owner can use email-link sign-in or password recovery. Never store their email/password in this handoff.
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
+
+## Private GitHub Actions backups (28 November 2026)
+
+- The backup workflow is in the new private repository `renoraphael/hdg-backups`. The credential-free encryption self-test passed. Scheduled runs await the owner's public age recipient and production connection and storage secrets. Keep the existing local encrypted schedule until the GitHub runs succeed.
+- The configured schedule is 03:15 Bali time nightly for the database and 03:30 Sundays for the private app bucket. Artifacts have 30-day retention and a repository budget guard. A fresh production dump of the app, Auth and Storage metadata compressed to approximately 1.38 MB before encryption. The previous full bucket measured about 16.05 MB after compression.
+- A Mac Docker drill restored an existing encrypted production dump to an isolated tmpfs-backed PostgreSQL container. All 69 table counts matched production, including Auth. The container was removed and no decrypted dump was written to disk. The first GitHub age artifact still awaits credentials. GitHub Actions failure-only email notifications were verified.
+- Singapore production is **Hello Division G** and the paused fallback is **Hello Division G (Seoul, retired)**. The restore guide is in START_HERE.md.
 
 ## Singapore test project and v666 release (28 November 2026)
 

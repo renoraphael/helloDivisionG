@@ -5,6 +5,13 @@ Website: https://renoraphael.github.io/helloDivisionG/
 
 Use this project with any coding assistant. GitHub stores tracked code, instructions, history, branches, and PRs. It does not share chat memory or grant access to another tool. Each assistant needs its own authorized GitHub connection or a checkout on the owner's Mac.
 
+## Production backup and restore
+
+- Singapore production is **Hello Division G** (`ovmdhkrkogivlvjnbqpj`). The synthetic test project is `oenawxeckerazwhvlpse`. **Hello Division G (Seoul, retired)** (`bhbgusdxqbjwsdlzhurb`) remains paused.
+- Encrypted backups are in [Actions in the private hdg-backups repository](https://github.com/renoraphael/hdg-backups/actions). The workflow defines a nightly database backup including Auth and a weekly private app bucket backup. Artifacts expire after 30 days. Scheduled runs are gated until the owner configures the encryption recipient and repository secrets.
+- Download the database artifact to a private local folder. From a local checkout of the private backup repo, run `python3 scripts/restore-check.py <artifact-folder> <docker-context>` with Docker running and the official `postgres:17` image available. Enter the age private key from the password manager at the hidden local prompt. The script decrypts in memory, restores to an isolated temporary Docker PostgreSQL, compares row counts against the encrypted source manifest and removes the database.
+- The [private restore guide](https://github.com/renoraphael/hdg-backups#restore-drill) explains manual decryption and the weekly bucket manifest. Keep the private key in the password manager. The synthetic Supabase project is for fictional data only.
+
 ## Start each task
 1. Read AGENTS.md, project/ARCHITECTURE.md, project/DISTRICT_PLAN.md (binding agreed rules), and project/HANDOFF.md.
 2. Inspect the current branch, commit, working changes, and open PRs. Pull only after ensuring that existing local work is safe.
