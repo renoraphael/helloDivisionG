@@ -947,6 +947,118 @@ finally:
        delete from hdg_sync_private.privacy_notices where version in ('{v1}','{v2}');""")
 
 
+# 021–022: bulk role tooling and per-record leader access.
+bulk = [{'memberId': mid('dd_k').lstrip('0'), 'role': 'division_director'},
+        {'memberId': mid('member_k'), 'role': 'area_director', 'area': 'K2'},
+        {'memberId': mid('council_k'), 'role': 'division_council', 'title': 'Fixture Education Lead'}]
+def roles_batch(actor, rows, apply=False):
+    return rpc('hdg_bulk_division_roles', T[actor], {
+        'p_division': 'K', 'p_year': 2026, 'p_rows': rows, 'p_apply': apply})
+s, _ = roles_batch('dd_k', bulk)
+check('021 only a maintainer can preview role batches', s != 200)
+s, _ = roles_batch('signed_out', bulk)
+check('021 signed out cannot assign roles', s != 200)
+s, occupied = roles_batch('admin', bulk)
+check('021 a provisional occupant blocks the bulk replacement', s == 200
+      and occupied['rows'][0]['issue'] == 'seat_already_filled')
+synthetic_director = cfg['accounts']['k_new']['email']
+sql(f"delete from public.hdg_people where provisional and email='{synthetic_director}'")
+s, preview = roles_batch('admin', bulk)
+check('021 valid preview resolves exact members and existing terms without applying',
+      s == 200 and preview.get('valid') and not preview.get('applied') and preview['rows'][0]['existingRole'])
+s, invalid = roles_batch('admin', [{'memberId': '99999999999', 'role': 'division_council', 'title': 'Fictional'},
+                                  {'memberId': mid('member_k'), 'role': 'area_director', 'area': 'G1'},
+                                  {'memberId': mid('dd_g'), 'role': 'division_council', 'title': 'Wrong division'}])
+check('021 preview identifies missing members, cross-division areas and ineligible members',
+      s == 200 and [r['issue'] for r in invalid['rows']] == [
+          'member_not_imported', 'area_outside_division', 'no_active_membership_in_division'])
+s, _ = roles_batch('admin', bulk, True)
+check('021 Division K role changes stay blocked while imports are closed', s != 200)
+
+leader_notice = 'test-leader-' + uuid.uuid4().hex[:12]
+rpc('hdg_publish_privacy_notice', T['admin'], {'p_version': leader_notice, 'p_body': 'Fictional leader test.'})
+rpc('hdg_set_division_import', T['admin'], {'p_division': 'K', 'p_open': True})
+s, conflict = roles_batch('admin', bulk + [{'memberId': mid('member_k'), 'role': 'division_director'}], True)
+check('021 occupied seats block the whole batch', s == 200 and not conflict.get('applied')
+      and conflict['rows'][-1]['issue'] == 'seat_already_filled')
+s, assigned = roles_batch('admin', bulk, True)
+s2, repeat = roles_batch('admin', bulk, True)
+check('021 apply reuses the existing director, assigns AD and council, and is safe to retry',
+      s == s2 == 200 and assigned.get('applied') and repeat.get('applied')
+      and [x['roleId'] for x in assigned['rows']] == [x['roleId'] for x in repeat['rows']])
+assigned_ids = [r['roleId'] for r in assigned.get('rows', []) if r.get('roleId') and not r.get('existingRole')]
+
+fixture_scope = dict(p_kind='tli_session', p_id=None, p_year=2026, p_division='K', p_area='K1', p_club=None,
+                     p_title='Synthetic TLI', p_date=TODAY, p_details={'round': 1})
+fixture_records = []
+def save_event(actor, **changes):
+    return rpc('hdg_save_leader_record', T[actor], {**fixture_scope, **changes})
+def read_table(table, actor, query=''):
+    return request('GET', f'/rest/v1/{table}?select=*{query}', KEY, T[actor])
+try:
+    for actor in ('signed_out','dd_g','outsider','council_k'):
+        s, _ = save_event(actor)
+        check(f'022 {actor} cannot write K1 leader data', s != 200)
+    s, first = save_event('dd_k')
+    tli = first['record']
+    fixture_records.append(tli['id'])
+    check('022 Division K Director can write TLI records in their division', s == 200 and first['applied'])
+    for kind in ('contest','club_performance','area_visit'):
+        s, result = save_event('cross', p_kind=kind, p_club='9000003')
+        check(f'022 Area Director can write {kind} in their area', s == 200 and result.get('applied'), str(s))
+        if result.get('applied'):
+            fixture_records.append(result['record']['id'])
+    s, _ = save_event('cross', p_area='K2', p_kind='area_visit', p_club='9000004')
+    check('022 Area Director cannot write a sibling area', s != 200)
+    s, _ = save_event('dd_k', p_kind='area_visit', p_club='9000004')
+    check('022 API rejects a club assigned to a different area in the selected program year', s != 200)
+    s, stale = save_event('dd_k', p_id=tli['id'], p_expected_at='2000-01-01T00:00:00Z', p_title='Stale edit')
+    check('022 stale leader edits do not overwrite a newer record', s == 200 and not stale.get('applied')
+          and stale['record']['title'] == tli['title'])
+    for actor, expected in (('dd_k',True),('cross',True),('council_k',True),('dd_g',False),('outsider',False)):
+        s, got = read_table('hdg_leader_records', actor, '&id=eq.' + tli['id'])
+        check(f'022 {actor} leader record read scope', s == 200 and bool(got) == expected)
+    membership = sql(f"select id from public.hdg_memberships where person_id='{P['member_k']}' and club_number='9000003'")[0]['id']
+    other_m = sql(f"select id from public.hdg_memberships where person_id='{P['dd_k']}' and club_number='9000004'")[0]['id']
+    s, _ = rpc('hdg_save_tli_attendance', T['dd_k'], {'p_session': tli['id'], 'p_membership': other_m, 'p_present': True})
+    check('022 TLI attendance cannot attribute a K1 session to a K2 membership', s != 200)
+    s, presence = rpc('hdg_save_tli_attendance', T['cross'], {'p_session': tli['id'], 'p_membership': membership, 'p_present': True})
+    check('022 scoped Area Director can record attendance by membership', s == 200 and presence.get('applied'))
+    for actor, expected in (('council_k',True),('cross',True),('dd_g',False),('outsider',False)):
+        s, got = read_table('hdg_tli_attendance', actor, '&session_id=eq.' + tli['id'])
+        check(f'022 {actor} attendance read scope', s == 200 and bool(got) == expected)
+    sql("""insert into public.hdg_club_figures(club_number,as_of,year_start,dcp_goals_met)
+        values('9000003','2026-11-27',2026,4),('9000004','2026-11-27',2026,6) on conflict do nothing""")
+    s, figures = rpc('hdg_leader_club_figures', T['cross'], {'p_year': 2026, 'p_division': 'K'})
+    check('022 leader DCP projection uses approved historical alignment', s == 200 and
+          {row['club_number'] for row in figures} == {'9000003'})
+    task_args = {'p_id': None, 'p_division': 'K', 'p_year': 2026, 'p_area': 'K1', 'p_title': 'Private fixture',
+                 'p_notes': '', 'p_due': TODAY, 'p_completed': False}
+    s, task_response = rpc('hdg_save_personal_task', T['member_k'], task_args)
+    task = task_response['record']
+    s2, _ = read_table('hdg_personal_tasks', 'member_k', '&id=eq.' + task['id'])
+    s3, admin_tasks = read_table('hdg_personal_tasks', 'admin', '&id=eq.' + task['id'])
+    s4, denied_task = rpc('hdg_save_personal_task', T['dd_k'], {
+        **task_args, 'p_id': task['id'], 'p_expected_at': task['updated_at']})
+    check('022 tasks are owner-only even from maintainers and Division Directors', s == s2 == s3 == s4 == 200
+          and admin_tasks == [] and not denied_task.get('applied'))
+    s, bundle = rpc('hdg_export_my_data', T['member_k'])
+    check('022 privacy export includes own tasks and TLI attendance', s == 200
+          and any(t['id'] == task['id'] for t in bundle['personalTasks'])
+          and any(a['session_id'] == tli['id'] for a in bundle['tliAttendance']))
+    params = {'p_id': task['id'], 'p_expected_at': task['updated_at']}
+    s, blocked = rpc('hdg_delete_personal_task', T['admin'], params)
+    s2, deleted = rpc('hdg_delete_personal_task', T['member_k'], params)
+    check('022 task deletion remains owner-only', s == s2 == 200 and blocked is False and deleted is True)
+finally:
+    for rid in fixture_records:
+        sql(f"delete from public.hdg_leader_records where id='{rid}'")
+    for rid in assigned_ids:
+        sql(f"delete from public.hdg_roles where id='{rid}'")
+    sql(f"""delete from public.hdg_club_figures where club_number in ('9000003','9000004') and as_of='2026-11-27';
+      update public.hdg_divisions set config='{{}}' where code='K';
+      delete from hdg_sync_private.privacy_notices where version='{leader_notice}';""")
+
 failed =[r for r in results if not r[0]]
 for ok, name, detail in results:
     print(('PASS ' if ok else 'FAIL ') + name + (f'  [{detail}]' if not ok and detail else ''))

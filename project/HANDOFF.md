@@ -14,6 +14,13 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
+## Division K roles and leader records (28 November 2026)
+
+- Stacked on draft privacy PR #62. Migrations 021–022 were installed in the synthetic Singapore project only. No live roles, Division G records, or dashboard routing were changed.
+- `deployment/tools/bulk_division_roles.py` is the maintainer CSV tool. It previews imported active member IDs in the selected division and year, reports invalid and occupied seats, and applies valid batches atomically after the import gate opens. The tool is ready to receive fictional or approved rosters once available. No real roster was consumed.
+- Leader storage supports TLI, membership-linked attendance, contests, supplemental club performance, Area Director visits, and private personal tasks. Official DCP snapshots are projected from 009 using the approved historical alignment. The 020 self-export now includes a person's own tasks and attendance. No browser or iPhone build changed.
+- `deployment/tools/check_leader_copy.py` is a read-only copy and parity preflight. A synthetic run verified matching content, drift detection, and ambiguous scope/attendance blockers. Division G still needs approved mappings, a shadow copy, reconciled totals, and the owner's explicit approval before the dashboard cutover. Privacy and backups precede any rollout.
+
 ## Privacy, onboarding and Singapore housekeeping (28 November 2026)
 
 - Migration 020 and the launcher UI are under review. The synthetic project contains the schema and the pg_cron job. Production has not received migration 020, a new notice or the erasure job. Division K imports remain closed.
