@@ -2,7 +2,7 @@
 /* Keeps the ballot page's own files on the phone so the page reopens without signal.
    Network first: a fresh copy is used whenever there is signal. Only these four same-site files are kept;
    nothing from the database (ballots, votes) passes through this cache. */
-const CACHE='hdg-ballot-v1';
+const CACHE='hdg-ballot-v2';
 const FILES=['ballot.html','ballot.js','cloud-sync.js','cloud-sync.css'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES.map(f=>new Request(f,{cache:'reload'})))).catch(()=>{}));

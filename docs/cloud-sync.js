@@ -1,7 +1,7 @@
 /* No service key or member records belong in this adapter. */
 (function(global){
 'use strict';
-const CONFIG={url:'https://bhbgusdxqbjwsdlzhurb.supabase.co',key:'sb_publishable_73Y-5z5ao1d97jUibxC97g_AMmmaiXh'};
+const CONFIG={url:'https://ovmdhkrkogivlvjnbqpj.supabase.co',key:'sb_publishable_LKDaIJ0M55EPikKIdD7yeQ_MmCNvHFC'};
 function shared(payload){
  const out=JSON.parse(JSON.stringify({updated:payload.updated,settings:payload.settings||{},database:payload.database}));
  // Director workspace records belong outside the officer-readable shared snapshot.
@@ -59,7 +59,8 @@ if(typeof module!=='undefined'&&module.exports){module.exports={SyncQueue,shared
 let session=null,refreshing=null,ready=false,applying=false,localReady=false,polling=false,baseSave;
 const pendingId='cloud-pending-'+crypto.randomUUID();
 let recoveredDrafts=[], creatingAccount=false;
-const sessionKey='hdg.cloud.session.v1';
+const sessionKey='hdg.cloud.session.v1:'+CONFIG.url;
+const recoveryKey='hdg.cloud.recovery.v1:'+CONFIG.url;
 // The legacy agenda otherwise creates this implicit global only after an edit.
 if(typeof global.agendaGeneratedRecordId==='undefined')global.agendaGeneratedRecordId='';
 const cloud={SyncQueue,shared,signature,afterRemoteApply:[]};
@@ -242,6 +243,24 @@ async function currentAppFile(channel,fallback){
  }catch(_){}
  return{file:fallback,release:fallback.replace(/\.html$/,'')};
 }
+/* Hosted archives keep their original storage bytes. Update the inline
+   adapter when opening a pre-move release so rollback stays on Singapore. */
+function useCurrentBackend(html){
+ const tag='<script id="hdg-cloud-adapter">';
+ const start=html.indexOf(tag);
+ if(start<0)throw new Error('The stored leader release is missing its cloud adapter.');
+ const end=html.indexOf('<'+'/script>',start);
+ if(end<0)throw new Error('The stored leader release has an incomplete cloud adapter.');
+ const archived=html.slice(start,end);
+ let configs=0;
+ const adapter=archived.replace(/const CONFIG=\{url:['"]https:\/\/[a-z0-9]+\.supabase\.co['"],key:['"][A-Za-z0-9_.-]+['"]\};/g,()=>{
+  configs++;
+  return 'const CONFIG='+JSON.stringify(CONFIG)+';';
+ }).replace("const sessionKey='hdg.cloud.session.v1';","const sessionKey="+JSON.stringify(sessionKey)+";")
+   .replace(/'hdg\.cloud\.recovery\.v1'/g,()=>JSON.stringify(recoveryKey));
+ if(configs!==1)throw new Error('The stored leader release has an unrecognized backend configuration.');
+ return html.slice(0,start)+adapter+html.slice(end);
+}
 async function showMemberCommunity(data){
  const m=el('hdg-auth-message');if(m)m.textContent='Opening Hello Division G…';
  const app=await currentAppFile('member','v665-member.html');
@@ -334,7 +353,7 @@ async function sendPasswordReset(){
 }
 function showPasswordRecovery(){
  ready=false;
- sessionStorage.setItem('hdg.cloud.recovery.v1','true');
+ sessionStorage.setItem(recoveryKey,'true');
  const title=el('hdg-cloud-gate').querySelector('h1');title.textContent='Choose your password';
  const form=document.createElement('form');form.id='hdg-auth-form';
  form.innerHTML='<label>New password<input id="hdg-new-password" type="password" autocomplete="new-password" minlength="8" required></label><label>Confirm new password<input id="hdg-confirm-password" type="password" autocomplete="new-password" minlength="8" required></label><button id="hdg-save-password" type="submit">Save password and sign in</button>';
@@ -348,7 +367,7 @@ function showPasswordRecovery(){
   const button=el('hdg-save-password');button.disabled=true;
   try{
    session.user=await request('/auth/v1/user',{password:first.value},true,true,'PUT');
-   first.value='';second.value='';setSession(session);sessionStorage.removeItem('hdg.cloud.recovery.v1');
+   first.value='';second.value='';setSession(session);sessionStorage.removeItem(recoveryKey);
    el('hdg-auth-message').textContent='Password saved. Opening your database…';await connect();
   }catch(error){el('hdg-auth-message').textContent=error.message;}
   finally{button.disabled=false;}
@@ -480,7 +499,8 @@ async function connect(){
   const html=await fetchAppHtml(app.file,appProgress('Opening Hello Division G…'));
   if(!html.includes('hdg-cloud-adapter')||!html.includes('window.__HDG_APP_RELEASE__="'+app.release+'";'))throw new Error('The protected app file is not a connected '+app.release.replace('-community','')+' build.');
   global.HDG_ENTRY_LOADER=false;
-  document.open();document.write(html);document.close();
+  const connectedHtml=useCurrentBackend(html);
+  document.open();document.write(connectedHtml);document.close();
   return;
  }
  const row=await readState();
@@ -556,7 +576,7 @@ cloud.boot=async function(){
    setSession({access_token:fragment.get('access_token'),refresh_token:fragment.get('refresh_token'),expires_in:Number(fragment.get('expires_in'))||3600});
    history.replaceState({},'',location.pathname+location.search);
   }
-  if(session){if(!session.user){session.user=await request('/auth/v1/user');setSession(session);}if(fragment.get('type')==='recovery'||sessionStorage.getItem('hdg.cloud.recovery.v1'))showPasswordRecovery();else await connect();}
+  if(session){if(!session.user){session.user=await request('/auth/v1/user');setSession(session);}if(fragment.get('type')==='recovery'||sessionStorage.getItem(recoveryKey))showPasswordRecovery();else await connect();}
  }
  catch(error){el('hdg-auth-message').textContent=error.message;}
  setInterval(async()=>{await queue.flush();await poll();},30000);
