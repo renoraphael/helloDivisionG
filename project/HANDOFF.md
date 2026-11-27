@@ -17,6 +17,7 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 ## Privacy, onboarding and Singapore housekeeping (28 November 2026)
 
 - Migration 020 and the launcher UI are under review. The synthetic project contains the schema and the pg_cron job. Production has not received migration 020, a new notice or the erasure job. Division K imports remain closed.
+- The final synthetic access suite passed 381/381, including the import gate and the 12-month cutoff in the Singapore calendar. The browser preview confirmed notice acceptance, self-service controls and the deadline queue using fictional data. No iPhone build was verified.
 - The privacy backend records consent timestamps by version, supports a signed-in per-record export and profile clearing, and gives the maintainer a deletion queue with a 30-day deadline. Eligibility is rechecked under a membership write lock. Past officer seats preserve their dates with the “Former member” label.
 - The active Division G shared snapshot, legacy imports and retained copies still require separate work. Known structured legacy matches block automatic or manual erasure. The self-service export does not cover archived HTML or unstructured awards and meeting history. Review these before describing legacy account deletion and export as complete.
 - `hdg_my_context` now includes access mode, current roles and scope, and private per-account tutorial progress. `hdg_mark_onboarding_seen` records the first view of a step.
