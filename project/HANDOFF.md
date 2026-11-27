@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 19 November 2026 (Asia/Makassar).
+Updated 28 November 2026 (Asia/Makassar).
 
 ## Owner's objective
 Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hello Division G project without losing changes, leaking member data, or relying on one chat's memory.
@@ -379,3 +379,10 @@ The Member Poster Generator opens without a selected club or meeting. Resume las
 - The launcher switches Auth, data, and ballots to Singapore, isolates sessions by project, and aligns the inline adapter for protected historical releases without rewriting archived bytes. Test and import commands guard both production refs.
 - Owner approved the live switch after data and access verification. The restored application and persistent Auth data were compared by table checksum. Policies and grants matched Seoul. Leader and Member role probes passed with cross-channel, unapproved and anonymous access denied.
 - During cutover, the Seoul Data API rejects write-capable requests so old tabs cannot save to the retired backend. Seoul retains its data and private files. For rollback, reconcile Singapore writes first, revert launcher routing, then remove the known Seoul pre-request gate and reload PostgREST configuration. Do not reset or seed either production project. v666 and migration 019 are recorded above.
+
+## Private GitHub Actions backups (28 November 2026)
+
+- The backup workflow is in the new private repository `renoraphael/hdg-backups`. The credential-free encryption self-test passed. Scheduled runs await the owner's public age recipient and production connection and storage secrets. Keep the existing local encrypted schedule until the GitHub runs succeed.
+- The configured schedule is 03:15 Bali time nightly for the database and 03:30 Sundays for the private app bucket. Artifacts have 30-day retention and a repository budget guard. A fresh production dump of the app, Auth and Storage metadata compressed to approximately 1.38 MB before encryption. The previous full bucket measured about 16.05 MB after compression.
+- A Mac Docker drill restored an existing encrypted production dump to an isolated tmpfs-backed PostgreSQL container. All 69 table counts matched production, including Auth. The container was removed and no decrypted dump was written to disk. The first GitHub age artifact still awaits credentials. GitHub Actions failure-only email notifications were verified.
+- Singapore production is **Hello Division G** and the paused fallback is **Hello Division G (Seoul, retired)**. The restore guide is in START_HERE.md.
