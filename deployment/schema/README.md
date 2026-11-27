@@ -5,7 +5,7 @@
 - Apply 000 and 001 only to a fresh test project. Numbered migrations reach production through a separate owner-approved release after the access suite and a permission diff pass (project/DISTRICT_PLAN.md rules 28–31). Verify project refs before running SQL:
   - **Singapore production** `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`) is **Hello Division G**.
   - **Singapore synthetic test** `oenawxeckerazwhvlpse` (`ap-southeast-1`) is **Hello Division G Synthetic Test**.
-  - **Paused Seoul fallback** `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`) is also named **Hello Division G** and is never a deployment target.
+  - **Paused Seoul fallback** `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`) is **Hello Division G (Seoul, retired)** and is never a deployment target.
 
 ## Running the access tests
 

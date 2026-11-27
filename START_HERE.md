@@ -9,7 +9,7 @@ Use this project with any coding assistant. GitHub stores tracked code, instruct
 
 - **Production · Singapore** is `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`). The dashboard name is **Hello Division G**.
 - **Synthetic test · Singapore** is **Hello Division G Synthetic Test**, `oenawxeckerazwhvlpse` (`ap-southeast-1`). Seed invented data only.
-- **Paused fallback · Seoul** is **Hello Division G**, `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`). Keep it paused during the production stability period. A final verified backup and explicit owner approval are required before deleting it.
+- **Paused fallback · Seoul** is **Hello Division G (Seoul, retired)**, `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`). Keep it paused during the production stability period. A final verified backup and explicit owner approval are required before deleting it.
 - The 27 November 2026 decision retired migration 013, migration 014, and the separate Division K build from the production release path. Division K uses the shared app. The original SQL and build files remain for synthetic tests and reference.
 
 ## Start each task
