@@ -754,6 +754,8 @@ sql(f"update public.hdg_people set name = '{NAME_DDG}', hand_corrected = '{{}}' 
     "delete from public.hdg_people where ltrim(ti_member_id, '0') = '1234567'; "
     f"delete from public.hdg_import_freshness where club_number = '{C2}'; delete from hdg_sync_private.member_imports where club_number = '{C2}'")
 
+# A stopped synthetic run can leave its fictional notice active.
+sql("delete from hdg_sync_private.privacy_notices where version ~ '^test-(gate-|leader-|[0-9a-f]{12}-)'")
 # 019: lists for clubs outside Division G. A division's imports open only when the maintainer opens them (PDPA first);
 # leaders import only clubs they lead.
 CK = '9000003'
