@@ -12,7 +12,7 @@ Scale Hello Division G (the owner's DTM project) to Hello Division K first, then
 1. **Never store a member's street address or phone number.** For regular members, CSV importers keep city only (city is kept on each person, for search and filtering). Unneeded columns are removed in the browser before upload. Owner decision, 21 November 2026: **club information that is public is published in full** (venue and street address, public phone, links, schedule, as listed in the Toastmasters directory), and **club officers' (exco) phone numbers are kept**, because leaders need to reach them.
 2. **Members never see member records outside their own scope.** Club information (name, schedule, venue, area, awards) is visible to everyone in the district.
 3. **Personal tasks and projects are owner-only**, enforced by per-user row-level security, never through the shared division payload. Nobody else can read them, including the Division Director, ADs and district leaders.
-4. **Privacy law priority:** Malaysia PDPA first (stricter), then Indonesia UU PDP. This means a privacy notice, deletion on request, and a retention rule for past members.
+4. **Privacy law priority:** Malaysia PDPA first (stricter), then Indonesia UU PDP. This means a privacy notice, deletion on request, and a retention rule for past members. Owner decision, 27 November 2026: **an active member cannot delete their name, member ID or club membership** (the club and its leaders need them, and they come from the Toastmasters list); they can remove what they added themselves (nickname, other names, pronunciation, photo) and ask for corrections. **Full deletion is available once a person has no active membership.** Deletion requests are done within **30 days**; past members' data is kept **12 months** after their last membership ends, then erased automatically (owner decisions, 27 November 2026). Who reviews the final notice wording is still open. The production database was created in Seoul, South Korea (Supabase ap-northeast-2) without the owner being asked. Owner decision, 27 November 2026: **production moves to Singapore (ap-southeast-1)** before any Division K member data is imported; the privacy notice names Singapore. The test project is already in Singapore.
 5. **Member photos on posters need the member's consent** (per-member setting).
 6. **Guest details** (names, phone numbers collected at meetings) are either not stored, or kept only in that club with consent and short retention.
 7. **Toastmasters member data is used for Toastmasters business only.**
@@ -98,7 +98,7 @@ District leaders plus members the owner approves: under 50 people, or under 100 
 9. Error reports to the maintainer.
 10. One-step release rollback.
 
-**Phase 1: Hello Division K.** Owner decisions, 21 November 2026:
+**Phase 1: Division K (in the shared app, later Hello District 87).** Owner decisions, 21 November 2026:
 - **The app moves onto the per-record tables** (the planned switch, not a copy of Division G's single-record model), so it scales to every division. Start with the member side (events, agendas, posters, leadership directory), then the leader dashboards. Division G moves over at the same time, with the owner's approval.
 - Remove the Division G hard-wiring: division name, time zone labels (MYT for Malaysia) and currency (RM for Malaysia) come from each club.
 - **District 87 club directory: imported** (130 clubs, all divisions, 21 November 2026).
@@ -106,6 +106,12 @@ District leaders plus members the owner approves: under 50 people, or under 100 
 - Malaysian PDPA (rule 4) is met before any Division K member data is imported: privacy notice, deletion on request, retention for past members.
 - The template split follows rule 22 (only named club-owned designs are protected), the TI dashboard scraper has a manual fallback, and Division K gets onboarding.
 - Pilot with the Division K Director's agreement first; District Executive Committee approval before district-wide rollout (rule 37).
+- **Owner decisions, 27 November 2026:**
+  - **No separate "Hello Division K" app.** Every division uses the same app, which will later be rebranded **Hello District 87**. The division release slot and separate division build (013 and the Division K build) are not released.
+  - **Division K leaders get the same leader dashboards as Division G**, scoped to their own division.
+  - **Imports for another division** go straight into the per-record tables, scoped by role (rule 14). Each division's member imports open only when the maintainer opens them, after rule 4 (PDPA) is met for that division.
+  - **Onboarding is a priority.** A Division K map is not.
+  - Division K roles are assigned after the owner's call with the Division K Director.
 
 **Phase 2: District 87.** District roll-up, district scorecard, district calendar, leadership directory, realignment tool, and Trio, AM and SDO views.
 
