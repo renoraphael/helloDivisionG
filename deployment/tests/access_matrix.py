@@ -752,6 +752,47 @@ sql(f"update public.hdg_people set name = '{NAME_DDG}', hand_corrected = '{{}}' 
     "delete from public.hdg_people where ltrim(ti_member_id, '0') = '1234567'; "
     f"delete from public.hdg_import_freshness where club_number = '{C2}'; delete from hdg_sync_private.member_imports where club_number = '{C2}'")
 
+# 019: lists for clubs outside Division G. A division's imports open only when the maintainer opens them (PDPA first);
+# leaders import only clubs they lead.
+CK = '9000003'
+K_ROWS = [{'memberId': mid('member_k'), 'name': 'Test Member K', 'active': True}, {'memberId': '7654321', 'name': 'Test Kappa Joiner', 'active': True}]
+def club_row(r, club):
+    s, cl = rpc('hdg_import_clubs', T[r])
+    return s, next((c for c in (cl or []) if isinstance(cl, list) and c.get('club') == club), {})
+s, k = club_row('dd_k', CK)
+check('019 every club is listed for imports, Division K closed for now', s == 200 and k.get('division') == 'K' and k.get('canImport') is False
+      and k.get('reason') == 'closed', str(k))
+s, g = club_row('dd_k', C2)
+check('019 a club outside the leader\'s scope says so', s == 200 and g.get('canImport') is False and g.get('reason') == 'scope', str(g))
+s, _ = imp('dd_k', K_ROWS, club=CK)
+check('019 Division K member lists are refused until the division is opened', s != 200
+      and not sql("select 1 from public.hdg_people where ltrim(ti_member_id, '0') = '7654321'"), str(s))
+s, _ = rpc('hdg_import_club_officers', T['dd_k'], {'p_club': CK, 'p_as_of': YDAY, 'p_seats': []})
+check('019 Division K officer lists are refused until the division is opened', s != 200, str(s))
+for r in ('dd_k', 'dd_g', 'am'):
+    s, _ = rpc('hdg_set_division_import', T[r], {'p_division': 'K', 'p_open': True})
+    check(f'019 {r} cannot open a division\'s imports', s != 200, str(s))
+s, _ = rpc('hdg_set_division_import', T['admin'], {'p_division': 'K', 'p_open': True})
+check('019 the maintainer opens Division K imports', s in (200, 204) and club_row('dd_k', CK)[1].get('canImport') is True, str(s))
+s, _ = imp('dd_g', K_ROWS, club=CK)
+check('019 the Division G Director cannot import a Division K club', s != 200, str(s))
+s, _ = imp('ad_g1', K_ROWS, club=CK)
+check('019 an Area Director of another division cannot either', s != 200, str(s))
+s, res = imp('dd_k', K_ROWS, club=CK)
+check('019 the Division K Director imports a Division K club once open', s == 200 and res.get('newPeople') == 1, str(res)[:160])
+s, res = imp('admin', K_ROWS, club=CK, as_of=TODAY)
+check('019 the maintainer can import it too', s == 200 and res.get('newPeople') == 0, str(res)[:160])
+s, res = imp('dd_g', ROWS)
+check('019 Division G imports keep working', s == 200 and 'import' in res, str(res)[:160])
+s, _ = rpc('hdg_import_clubs', None)
+check('019 signed out: no club list for imports', s != 200 or _ == [], str(s))
+sql("update public.hdg_divisions set config = '{}' where code = 'K'; "
+    "delete from public.hdg_people where ltrim(ti_member_id, '0') = '7654321'; "
+    f"update public.hdg_memberships set status = 'active' where club_number = '{C2}' and person_id in ('{P['prm']}', '{P['past_ad']}', '{P['dd_g']}'); "
+    "delete from public.hdg_people where ltrim(ti_member_id, '0') = '1234567'; "
+    f"update public.hdg_people set name = '{NAME_DDG}', hand_corrected = '{{}}' where id = '{P['dd_g']}'; "
+    f"delete from public.hdg_import_freshness where club_number in ('{C2}', '{CK}'); delete from hdg_sync_private.member_imports where club_number in ('{C2}', '{CK}')")
+
 failed =[r for r in results if not r[0]]
 for ok, name, detail in results:
     print(('PASS ' if ok else 'FAIL ') + name + (f'  [{detail}]' if not ok and detail else ''))

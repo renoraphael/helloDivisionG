@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PRODUCTION_REF = 'ovmdhkrkogivlvjnbqpj'
 RETIRED_PRODUCTION_REF = 'bhbgusdxqbjwsdlzhurb'
-TEST_REF = os.environ.get('HDG_TEST_REF')
+TEST_REF = os.environ.get('HDG_TEST_REF', 'oenawxeckerazwhvlpse')
 if not TEST_REF or TEST_REF in (PRODUCTION_REF, RETIRED_PRODUCTION_REF):
     raise SystemExit('Set HDG_TEST_REF to a separate synthetic test project. Both production projects are guarded.')
 URL = f'https://{TEST_REF}.supabase.co'

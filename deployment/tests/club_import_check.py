@@ -4,7 +4,7 @@ Usage: SUPABASE_CLI=/path/to/supabase python3 deployment/tests/club_import_check
 """
 import csv, json, os, subprocess, sys, tempfile
 from pathlib import Path
-from test_env import sql, request, load_local, ROOT
+from test_env import sql, request, load_local, ROOT, TEST_REF
 
 sys.path.insert(0, str(ROOT / 'deployment' / 'imports'))
 from import_clubs import EXPECTED
@@ -27,7 +27,8 @@ def run(rows, name):
     p = Path(d) / name
     with p.open('w', newline='', encoding='utf-8') as f:
         w = csv.DictWriter(f, fieldnames=EXPECTED); w.writeheader(); w.writerows(rows)
-    out = subprocess.run([sys.executable, str(ROOT / 'deployment/imports/import_clubs.py'), str(p)], capture_output=True, text=True)
+    out = subprocess.run([sys.executable, str(ROOT / 'deployment/imports/import_clubs.py'), str(p)],
+                         env={**os.environ, 'HDG_TEST_REF': TEST_REF}, capture_output=True, text=True)
     p.unlink(); os.rmdir(d)
     if out.returncode:
         raise SystemExit(out.stderr or out.stdout)
