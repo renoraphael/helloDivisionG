@@ -61,6 +61,44 @@ alter table hdg_sync_private.privacy_deletion_requests enable row level security
 revoke all on hdg_sync_private.privacy_notices, hdg_sync_private.privacy_acceptances,
  hdg_sync_private.privacy_deletion_requests from public, anon, authenticated;
 
+-- Correction cases are a private queue, separate from application error reporting.
+create table hdg_sync_private.privacy_corrections (
+ id uuid primary key default gen_random_uuid(),
+ user_id uuid not null references auth.users on delete cascade,
+ field text not null check (field in ('name','member_id','club','email','city')),
+ details text not null check (length(btrim(details)) between 1 and 500),
+ requested_at timestamptz not null default clock_timestamp(),
+ resolved_at timestamptz
+);
+create index privacy_corrections_owner on hdg_sync_private.privacy_corrections(user_id);
+alter table hdg_sync_private.privacy_corrections enable row level security;
+revoke all on hdg_sync_private.privacy_corrections from public, anon, authenticated;
+
+create table hdg_sync_private.privacy_retention_runs (
+ id bigint generated always as identity primary key,
+ started_at timestamptz not null,
+ finished_at timestamptz not null default clock_timestamp(),
+ status text not null check (status in ('completed','failed')),
+ erased_count integer not null check (erased_count>=0)
+);
+alter table hdg_sync_private.privacy_retention_runs enable row level security;
+revoke all on hdg_sync_private.privacy_retention_runs from public, anon, authenticated;
+
+-- Imported individual awards can preserve their outcome without preserving the recipient's identity.
+-- The approved legacy copy must populate these by verified person ID, never a guessed name.
+create table hdg_sync_private.member_award_history (
+ id uuid primary key default gen_random_uuid(),
+ person_id uuid references public.hdg_people,
+ award_title text not null check (length(btrim(award_title)) between 1 and 160),
+ awarded_on date,
+ former_member boolean not null default false,
+ former_member_name text generated always as (case when former_member then 'Former member' end) stored,
+ check ((person_id is null)=former_member)
+);
+create index member_award_history_person on hdg_sync_private.member_award_history(person_id);
+alter table hdg_sync_private.member_award_history enable row level security;
+revoke all on hdg_sync_private.member_award_history from public, anon, authenticated;
+
 -- A published version is immutable through this API. Use a new version even for a small notice edit.
 create function public.hdg_publish_privacy_notice(p_version text, p_body text) returns void
 language plpgsql security definer set search_path to ''
@@ -164,6 +202,22 @@ as $$
  select exists(select 1 from public.hdg_memberships where person_id=any(p_people) and status='active')
 $$;
 
+-- During the legacy cutover an active shared membership still blocks a request.
+create function hdg_sync_private.privacy_account_active(p_people uuid[],p_user uuid) returns boolean
+language sql stable security definer set search_path to ''
+as $$
+ select hdg_sync_private.privacy_active(p_people) or exists (
+  select 1 from public.hdg_sync_state s
+  cross join lateral jsonb_array_elements(s.payload #> '{database,memberships}') m
+  where m->>'active'='true' and coalesce(m->>'pastMember','false')<>'true' and (
+    exists(select 1 from auth.users u where u.id=p_user and u.email_confirmed_at is not null
+      and lower(btrim(u.email))=nullif(lower(btrim(m->>'email')),''))
+    or exists(select 1 from public.hdg_people p where p.id=any(p_people)
+      and nullif(upper(ltrim(p.ti_member_id,'0')),'')=nullif(upper(ltrim(m->>'memberId','0')),''))
+  )
+ )
+$$;
+
 create function hdg_sync_private.privacy_people(p_user uuid) returns uuid[]
 language sql stable security definer set search_path to ''
 as $$
@@ -173,13 +227,87 @@ as $$
  where u.id=p_user
 $$;
 
+-- A member who also holds an officer role cannot use the broader edit API to blank their own roster fields.
+create function hdg_sync_private.privacy_keep_active_roster_fields() returns trigger
+language plpgsql security definer set search_path to ''
+as $$
+declare actor uuid := auth.uid(); own_people uuid[];
+begin
+ if actor is null then return new; end if;
+ own_people := hdg_sync_private.privacy_people(actor);
+ if old.id=any(own_people) and hdg_sync_private.privacy_account_active(own_people,actor)
+    and ((old.name is not null and nullif(btrim(new.name),'') is null)
+      or (old.ti_member_id is not null and nullif(btrim(new.ti_member_id),'') is null)
+      or (old.email is not null and nullif(btrim(new.email),'') is null)
+      or (old.city is not null and nullif(btrim(new.city),'') is null)) then
+  raise exception 'Active members can request corrections to their roster fields' using errcode='42501';
+ end if;
+ return new;
+end $$;
+create trigger hdg_privacy_keep_active_roster_fields
+ before update of name,ti_member_id,email,city on public.hdg_people
+ for each row when (
+  (old.name is distinct from new.name and (new.name is null or btrim(new.name)=''))
+  or (old.ti_member_id is distinct from new.ti_member_id and (new.ti_member_id is null or btrim(new.ti_member_id)=''))
+  or (old.email is distinct from new.email and (new.email is null or btrim(new.email)=''))
+  or (old.city is distinct from new.city and (new.city is null or btrim(new.city)=''))
+ ) execute function hdg_sync_private.privacy_keep_active_roster_fields();
+revoke execute on function hdg_sync_private.privacy_keep_active_roster_fields() from public,anon,authenticated;
+
+create function public.hdg_request_privacy_correction(p_field text,p_details text) returns uuid
+language plpgsql security definer set search_path to ''
+as $$
+declare actor uuid := auth.uid(); case_id uuid; note text := btrim(p_details);
+begin
+ if actor is null or cardinality(hdg_sync_private.privacy_people(actor))=0 then
+  raise exception 'A verified member profile is required' using errcode='42501';
+ end if;
+ if p_field is null or p_field not in ('name','member_id','club','email','city')
+   or note is null or length(note) not between 1 and 500 then
+  raise exception 'Select a roster field and enter 1–500 characters' using errcode='22023';
+ end if;
+ perform pg_advisory_xact_lock(hashtextextended('hdg_privacy_correction:'||actor::text,0));
+ select id into case_id from hdg_sync_private.privacy_corrections
+ where user_id=actor and field=p_field and details=note and resolved_at is null order by requested_at limit 1;
+ if found then return case_id; end if;
+ if (select count(*) from hdg_sync_private.privacy_corrections where user_id=actor and resolved_at is null)>=10 then
+  raise exception 'Wait for earlier correction requests to be reviewed' using errcode='22023';
+ end if;
+ insert into hdg_sync_private.privacy_corrections(user_id,field,details) values(actor,p_field,note) returning id into case_id;
+ return case_id;
+end $$;
+
+create function public.hdg_privacy_correction_queue() returns jsonb
+language plpgsql security definer set search_path to ''
+as $$
+begin
+ if not hdg_sync_private.is_maintainer() then raise exception 'Maintainer only' using errcode='42501'; end if;
+ insert into hdg_sync_private.access_log(actor,action) values(auth.uid(),'privacy_correction_queue');
+ return coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'email',u.email,'field',c.field,
+  'details',c.details,'requestedAt',c.requested_at) order by c.requested_at)
+  from hdg_sync_private.privacy_corrections c join auth.users u on u.id=c.user_id
+  where c.resolved_at is null),'[]');
+end $$;
+
+create function public.hdg_resolve_privacy_correction(p_request uuid) returns boolean
+language plpgsql security definer set search_path to ''
+as $$
+begin
+ if not hdg_sync_private.is_maintainer() then raise exception 'Maintainer only' using errcode='42501'; end if;
+ update hdg_sync_private.privacy_corrections set resolved_at=clock_timestamp()
+ where id=p_request and resolved_at is null;
+ if not found then return false; end if;
+ insert into hdg_sync_private.access_log(actor,action) values(auth.uid(),'privacy_correction_resolved');
+ return true;
+end $$;
+
 create function public.hdg_my_privacy() returns jsonb
 language plpgsql stable security definer set search_path to ''
 as $$
 declare people uuid[] := hdg_sync_private.privacy_people(auth.uid());
 begin
  if auth.uid() is null then raise exception 'Sign in required' using errcode='42501'; end if;
- return jsonb_build_object('activeMembership', hdg_sync_private.privacy_active(people),
+ return jsonb_build_object('activeMembership', hdg_sync_private.privacy_account_active(people,auth.uid()),
    'profileCount', cardinality(people), 'maintainer', hdg_sync_private.is_maintainer(),
    'pending', (select to_jsonb(r) - 'user_id' from hdg_sync_private.privacy_deletion_requests r
      where r.user_id=auth.uid() and completed_at is null));
@@ -206,6 +334,10 @@ begin
   'betaAccess', exists(select 1 from hdg_community_private.beta_members where user_id=actor),
   'onboarding', coalesce((select jsonb_object_agg(o.step,o.seen_at) from hdg_sync_private.onboarding_seen o where o.user_id=actor), '{}'),
   'consents', coalesce((select jsonb_agg(to_jsonb(a)-'user_id' order by a.accepted_at) from hdg_sync_private.privacy_acceptances a where a.user_id=actor), '[]'),
+  'correctionRequests', coalesce((select jsonb_agg(to_jsonb(c)-'user_id' order by c.requested_at)
+    from hdg_sync_private.privacy_corrections c where c.user_id=actor), '[]'),
+  'awards', coalesce((select jsonb_agg(to_jsonb(a)-array['former_member','former_member_name'])
+    from hdg_sync_private.member_award_history a where a.person_id=any(people)), '[]'),
   'deletionRequests', coalesce((select jsonb_agg(to_jsonb(r)-'user_id') from hdg_sync_private.privacy_deletion_requests r where r.user_id=actor), '[]'),
   'recordHistory', coalesce((select jsonb_agg(jsonb_build_object('table',h.table_name,'at',h.at,'action',h.op,
     'before',h.before-array['updated_by','entered_by','hand_corrected'], 'after',h.after-array['updated_by','entered_by','hand_corrected'])
@@ -242,7 +374,7 @@ as $$
 declare actor uuid := auth.uid(); r hdg_sync_private.privacy_deletion_requests;
 begin
  if actor is null then raise exception 'Sign in required' using errcode='42501'; end if;
- if hdg_sync_private.privacy_active(hdg_sync_private.privacy_people(actor)) then
+ if hdg_sync_private.privacy_account_active(hdg_sync_private.privacy_people(actor),actor) then
   raise exception 'Full deletion is available after your last active membership ends.' using errcode='42501';
  end if;
  insert into hdg_sync_private.privacy_deletion_requests(user_id) values (actor)
@@ -260,7 +392,7 @@ begin
  return coalesce((select jsonb_agg(jsonb_build_object('id',r.id,'requestedAt',r.requested_at,'dueAt',r.due_at,
   'email',u.email,'blocked',case
     when exists(select 1 from public.hdg_roles where person_id=any(p.ids) and role='maintainer') then 'maintainer'
-    when hdg_sync_private.privacy_active(p.ids) then 'active'
+    when hdg_sync_private.privacy_account_active(p.ids,r.user_id) then 'active'
     when hdg_sync_private.privacy_legacy_pending(p.ids,r.user_id) then 'legacy' end)
   order by r.due_at) from hdg_sync_private.privacy_deletion_requests r join auth.users u on u.id=r.user_id
   cross join lateral (select hdg_sync_private.privacy_people(r.user_id) ids) p where r.completed_at is null), '[]');
@@ -278,7 +410,7 @@ begin
   if not found then return false; end if;
   p_people := hdg_sync_private.privacy_people(p_user);
  end if;
- if hdg_sync_private.privacy_active(p_people)
+ if hdg_sync_private.privacy_account_active(p_people,p_user)
    or hdg_sync_private.privacy_legacy_pending(p_people,p_user)
    or exists(select 1 from public.hdg_roles where person_id=any(p_people) and role='maintainer') then return false; end if;
  perform 1 from public.hdg_people where id=any(p_people) for update;
@@ -286,6 +418,8 @@ begin
   union select id::text from public.hdg_roles where person_id=any(p_people)) into record_keys;
  update public.hdg_roles set person_id=null, former_member=true, entered_by=null
  where person_id=any(p_people) and ends_on < hdg_sync_private.today();
+ update hdg_sync_private.member_award_history set person_id=null, former_member=true
+ where person_id=any(p_people);
  update hdg_sync_private.privacy_deletion_requests set completed_at=clock_timestamp(),user_id=null
  where user_id=p_user and completed_at is null;
  delete from public.hdg_people where id=any(p_people);
@@ -329,8 +463,8 @@ begin
  if not hdg_sync_private.privacy_erase(hdg_sync_private.privacy_people(target),target) then
   raise exception 'This request is blocked by an active role, membership or legacy record.' using errcode='42501';
  end if;
- insert into hdg_sync_private.access_log(actor, action, detail)
- values (auth.uid(),'privacy_deletion_completed',jsonb_build_object('request',p_request));
+ insert into hdg_sync_private.access_log(actor, action)
+ values (auth.uid(),'privacy_deletion_completed');
  return true;
 end $$;
 
@@ -338,7 +472,9 @@ end $$;
 create function hdg_sync_private.privacy_nightly_erase() returns integer
 language plpgsql security definer set search_path to ''
 as $$
-declare p record; ids uuid[]; erased integer := 0; cutoff date := (hdg_sync_private.today()-interval '12 months')::date;
+declare p record; ids uuid[]; erased integer := 0;
+ started timestamptz := clock_timestamp();
+ cutoff date := (hdg_sync_private.today()-interval '12 months')::date;
 begin
  lock table public.hdg_memberships in share row exclusive mode;
  for p in select distinct pp.id, coalesce(pp.user_id, (select u.id from auth.users u
@@ -352,12 +488,20 @@ begin
      and (status='active' or ended_on is null or ended_on>cutoff))
    and hdg_sync_private.privacy_erase(ids,p.account) then erased:=erased+1; end if;
  end loop;
+ insert into hdg_sync_private.privacy_retention_runs(started_at,status,erased_count)
+ values(started,'completed',erased);
  return erased;
+exception when others then
+ -- The exception rolls back the erasures in this run. Never expose the underlying error text.
+ insert into hdg_sync_private.privacy_retention_runs(started_at,status,erased_count)
+ values(started,'failed',0);
+ raise warning 'Privacy retention run failed';
+ return -1;
 end $$;
 
 revoke execute on function hdg_sync_private.privacy_membership_end(), hdg_sync_private.privacy_json_matches(jsonb,text[]),
  hdg_sync_private.privacy_legacy_pending(uuid[],uuid), hdg_sync_private.privacy_active(uuid[]), hdg_sync_private.privacy_people(uuid),
- hdg_sync_private.privacy_erase(uuid[],uuid), hdg_sync_private.privacy_nightly_erase()
+ hdg_sync_private.privacy_account_active(uuid[],uuid), hdg_sync_private.privacy_erase(uuid[],uuid), hdg_sync_private.privacy_nightly_erase()
  from public, anon, authenticated;
 revoke execute on function public.hdg_publish_privacy_notice(text,text), public.hdg_privacy_notice(),
  public.hdg_accept_privacy_notice(text), public.hdg_my_privacy(), public.hdg_export_my_data(),
@@ -425,5 +569,9 @@ begin
  if not found then raise exception 'Unknown division' using errcode='22023'; end if;
 end $$;
 
+revoke execute on function public.hdg_request_privacy_correction(text,text),
+ public.hdg_privacy_correction_queue(), public.hdg_resolve_privacy_correction(uuid) from public, anon;
+grant execute on function public.hdg_request_privacy_correction(text,text),
+ public.hdg_privacy_correction_queue(), public.hdg_resolve_privacy_correction(uuid) to authenticated;
 notify pgrst, 'reload schema';
 commit;

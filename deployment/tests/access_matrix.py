@@ -754,6 +754,8 @@ sql(f"update public.hdg_people set name = '{NAME_DDG}', hand_corrected = '{{}}' 
     "delete from public.hdg_people where ltrim(ti_member_id, '0') = '1234567'; "
     f"delete from public.hdg_import_freshness where club_number = '{C2}'; delete from hdg_sync_private.member_imports where club_number = '{C2}'")
 
+# A stopped synthetic run can leave its fictional notice active.
+sql("delete from hdg_sync_private.privacy_notices where version ~ '^test-(gate-|leader-|[0-9a-f]{12}-)'")
 # 019: lists for clubs outside Division G. A division's imports open only when the maintainer opens them (PDPA first);
 # leaders import only clubs they lead.
 CK = '9000003'
@@ -809,7 +811,7 @@ from secrets import token_urlsafe
 stamp = uuid.uuid4().hex[:12]
 v1, v2 = f'test-{stamp}-1', f'test-{stamp}-2'
 for fn in ('hdg_privacy_notice', 'hdg_my_privacy', 'hdg_export_my_data', 'hdg_remove_my_details',
-           'hdg_request_deletion', 'hdg_privacy_deletion_queue', 'hdg_my_context'):
+           'hdg_request_deletion', 'hdg_privacy_deletion_queue', 'hdg_privacy_correction_queue', 'hdg_my_context'):
     s, _ = rpc(fn, None)
     check(f'020 signed out cannot call {fn}', s not in (200, 204), str(s))
 s, _ = rpc('hdg_publish_privacy_notice', T['member'], {'p_version': v1, 'p_body': 'Fictional notice version one.'})
@@ -838,6 +840,38 @@ s, _ = rpc('hdg_privacy_deletion_queue', T['am'])
 check('020 district officer cannot read the maintainer queue', s != 200, str(s))
 s, _ = rpc('hdg_complete_deletion', T['am'], {'p_request': str(uuid.uuid4())})
 check('020 district officer cannot process queued requests', s != 200, str(s))
+
+s, active_export = rpc('hdg_export_my_data', T['member'])
+active_profile = next(p for p in active_export['people'] if p['id'] == P['member'])
+for field in ('name','ti_member_id','club_number','email','city'):
+    s, _ = rpc('hdg_update_my_profile', T['member'], {'p_person': active_profile['id'],
+        'p_patch': {field: None}, 'p_expected_updated_at': active_profile['updated_at']})
+    check(f'020 active member cannot clear roster field {field}', s != 200, str(s))
+s, officer_export = rpc('hdg_export_my_data', T['officer'])
+officer_profile = next(p for p in officer_export['people'] if p['id'] == P['officer'])
+s, _ = rpc('hdg_update_person', T['officer'], {'p_person': officer_profile['id'],
+    'p_patch': {'email': None}, 'p_expected_updated_at': officer_profile['updated_at']})
+check('020 an active officer cannot clear their own email through the broader edit API', s != 200, str(s))
+correction_body = {'p_field': 'city', 'p_details': 'Synthetic correction ' + stamp}
+s, correction = rpc('hdg_request_privacy_correction', T['member'], correction_body)
+s2, replay = rpc('hdg_request_privacy_correction', T['member'], correction_body)
+check('020 an active member can request a roster correction and retries reuse the case',
+      s == s2 == 200 and correction and correction == replay)
+for actor in ('member','am','officer','outsider'):
+    s, _ = rpc('hdg_privacy_correction_queue', T[actor])
+    check(f'020 {actor} cannot read correction requests through the queue', s != 200, str(s))
+s, requests = rpc('hdg_privacy_correction_queue', T['admin'])
+check('020 maintainer can see the case', s == 200 and any(r['id'] == correction and r['field'] == 'city'
+      for r in requests))
+s, _ = rpc('hdg_resolve_privacy_correction', T['am'], {'p_request': correction})
+s2, done = rpc('hdg_resolve_privacy_correction', T['admin'], {'p_request': correction})
+check('020 only the maintainer can mark a correction reviewed', s != 200 and s2 == 200 and done is True)
+s, owned = rpc('hdg_export_my_data', T['member'])
+s2, other = rpc('hdg_export_my_data', T['officer'])
+check('020 only the requesting account gets the correction case in its export', s == s2 == 200
+      and any(c['id'] == correction and c['resolved_at'] for c in owned['correctionRequests'])
+      and not any(c['id'] == correction for c in other['correctionRequests']))
+sql(f"delete from hdg_sync_private.privacy_corrections where id='{correction}'")
 
 step = 'member-welcome-' + stamp
 s, _ = rpc('hdg_mark_onboarding_seen', None, {'p_step': step})
@@ -868,7 +902,7 @@ s, signed = request('POST', '/auth/v1/token?grant_type=password', KEY,
                     body={'email': privacy_email, 'password': pw})
 assert s == 200, f'Could not sign in synthetic privacy account: HTTP {s}'
 pt = signed['access_token']
-person, role, expired, recent, multi, legacy = [str(uuid.uuid4()) for _ in range(6)]
+person, role, award, expired, recent, multi, legacy = [str(uuid.uuid4()) for _ in range(7)]
 ids = ','.join(f"'{x}'" for x in (person, expired, recent, multi, legacy))
 try:
     sql(f"""
@@ -883,10 +917,13 @@ try:
       values ('{person}','9000003','past',current_date-2),
       ('{expired}','9000003','past',(hdg_sync_private.today()-interval '12 months')::date),
       ('{recent}','9000003','past',(hdg_sync_private.today()-interval '12 months')::date + 1),
+      ('{recent}','9000004','past',current_date-500),
       ('{multi}','9000003','past',current_date-500),('{multi}','9000004','active',null),
       ('{legacy}','9000003','past',current_date-500);
     insert into public.hdg_roles(id,person_id,role,scope_type,scope_code,year_start,starts_on,ends_on)
       values ('{role}','{person}','club_vpe','club','9000003',2025,'2025-07-01','2026-06-30');
+    insert into hdg_sync_private.member_award_history(id,person_id,award_title)
+      values ('{award}','{person}','Fictional education award');
     insert into hdg_sync_private.legacy_records(kind,key,data)
       values ('member_notes','{legacy}',jsonb_build_object('personId','{legacy}'));
     """)
@@ -907,6 +944,16 @@ try:
           and current['email'] == privacy_email and current['aliases'] == [] and current['photo_consent'] is False
           and all(current[f] is None for f in ('nickname','pronunciation','photo_path'))
           and 'Fixture alias' not in str(after_profile['recordHistory']))
+    check('020 award history is included only in the owner export',
+          any(a['id'] == award for a in exported['awards']) and not any(a['id'] == award for a in member_export['awards']))
+    sql(f"""update public.hdg_sync_state set payload=jsonb_set(payload,'{{database,memberships}}',
+      (payload #> '{{database,memberships}}') || jsonb_build_array(jsonb_build_object(
+        'email','{privacy_email}','active',true,'clubNumber','9000001'))) where division_code='G'""")
+    s, _ = rpc('hdg_request_deletion', pt)
+    check('020 a legacy-only active club membership also blocks the deletion request', s != 200)
+    sql(f"""update public.hdg_sync_state set payload=jsonb_set(payload,'{{database,memberships}}',
+      (select jsonb_agg(m) from jsonb_array_elements(payload #> '{{database,memberships}}') m
+       where m->>'email' is distinct from '{privacy_email}')) where division_code='G'""")
     s, pending = rpc('hdg_request_deletion', pt)
     s2, repeated = rpc('hdg_request_deletion', pt)
     s3, queue = rpc('hdg_privacy_deletion_queue', T['admin'])
@@ -924,12 +971,18 @@ try:
     ret = sql(f"""select not exists(select 1 from auth.users where id='{account}') as account_gone,
        not exists(select 1 from public.hdg_people where id='{person}') as person_gone,
        exists(select 1 from public.hdg_roles where id='{role}' and person_id is null and former_member_name='Former member') as anonymized,
+       exists(select 1 from hdg_sync_private.member_award_history where id='{award}' and person_id is null
+         and former_member_name='Former member') as award_anonymized,
        exists(select 1 from hdg_sync_private.privacy_deletion_requests where id='{request_id}' and user_id is null
          and completed_at is not null) as completed""")[0]
-    check('020 completion erases the account and profile and preserves the anonymized historical seat',
+    check('020 completion erases the account and profile and preserves anonymized officer and award history',
           s == 200 and completed is True and all(ret.values()), str(s))
 
-    sql("select hdg_sync_private.privacy_nightly_erase()")
+    erased = sql("select hdg_sync_private.privacy_nightly_erase() as n")[0]['n']
+    run = sql("select * from hdg_sync_private.privacy_retention_runs order by id desc limit 1")[0]
+    check('020 retention logs each successful run using only timestamps, status and aggregate count',
+          erased >= 1 and run['status'] == 'completed' and run['erased_count'] == erased
+          and set(run) == {'id','started_at','finished_at','status','erased_count'})
     remaining = {r['id'] for r in sql(f'select id from public.hdg_people where id in ({ids})')}
     check('020 nightly retention erases at exactly 12 months and protects newer, active and legacy-linked records',
           remaining == {recent, multi, legacy}, str(len(remaining)))
@@ -940,6 +993,7 @@ try:
 finally:
     sql(f"""delete from hdg_sync_private.privacy_deletion_requests where user_id='{account}' or id::text='{locals().get('request_id','')}';
        delete from hdg_sync_private.legacy_records where kind='member_notes' and key='{legacy}';
+       delete from hdg_sync_private.member_award_history where id='{award}';
        delete from public.hdg_roles where id='{role}'; delete from public.hdg_people where id in ({ids});
        delete from auth.users where id='{account}';
        delete from hdg_sync_private.onboarding_seen where step='{step}';

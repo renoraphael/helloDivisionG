@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 19 November 2026 (Asia/Makassar).
+Updated 28 November 2026 (Asia/Makassar).
 
 ## Owner's objective
 Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hello Division G project without losing changes, leaking member data, or relying on one chat's memory.
@@ -14,11 +14,18 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
+## Verified Supabase environments
+
+- **Singapore production** `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`) serves v666 and is currently named **Hello Division G Test**. Requested dashboard name **Hello Division G** is pending the owner's rename approval.
+- **Singapore synthetic test** `oenawxeckerazwhvlpse` (`ap-southeast-1`) is **Hello Division G Synthetic Test**.
+- **Paused Seoul fallback** `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`) is **Hello Division G**. Use the ref and region to disambiguate it.
+
 ## Privacy, onboarding and Singapore housekeeping (28 November 2026)
 
 - Migration 020 and the launcher UI are under review. The synthetic project contains the schema and the pg_cron job. Production has not received migration 020, a new notice or the erasure job. Division K imports remain closed.
 - The final synthetic access suite passed 381/381, including the import gate and the 12-month cutoff in the Singapore calendar. The browser preview confirmed notice acceptance, self-service controls and the deadline queue using fictional data. No iPhone build was verified.
 - The privacy backend records consent timestamps by version, supports a signed-in per-record export and profile clearing, and gives the maintainer a deletion queue with a 30-day deadline. Eligibility is rechecked under a membership write lock. Past officer seats preserve their dates with the “Former member” label.
+- The 020 review adds private roster correction requests, an aggregate-only retention run log, and anonymization of normalized individual award history. An active club membership in either per-record storage or the legacy snapshot blocks a deletion request. No production notice text has been drafted or published.
 - The active Division G shared snapshot, legacy imports and retained copies still require separate work. Known structured legacy matches block automatic or manual erasure. The self-service export does not cover archived HTML or unstructured awards and meeting history. Review these before describing legacy account deletion and export as complete.
 - `hdg_my_context` now includes access mode, current roles and scope, and private per-account tutorial progress. `hdg_mark_onboarding_seen` records the first view of a step.
 - The private scheduled backup ran successfully once with AES-256-GCM, a macOS Keychain-held key, and a check that the authenticated decrypted dump catalog contains the app, Auth and Storage metadata. Subsequent runs are scheduled daily at 03:15 Bali time, using the local Mac and its Supabase login. Backup archives have a 28-day local rotation and are outside the repository. The backup covers the database. Supabase Storage file bodies are separate. A restore into a fresh database has not been attempted.
