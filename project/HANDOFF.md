@@ -14,6 +14,18 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
+## Production moves from Seoul to Singapore (owner decision, 27 November 2026), IN PROGRESS with another assistant
+- Production `bhbgusdxqbjwsdlzhurb` is in ap-northeast-2 (Seoul); it was created on 11 Nov 2026 outside these sessions and the owner was never asked. It moves to a new project in ap-southeast-1 (Singapore) before any Division K member data.
+- Keep the Seoul project untouched as the fallback until the copy is proven equal and the owner approves (rule 31). After the switch: new URL and key in docs/cloud-sync.js and deployment/tests/test_env.py (which refuses production by ref), permission snapshot diff, access_matrix.py, real leader and member account check.
+- 019 and v666 (below) are not released; release them on the Singapore project after the move.
+
+## v666 imports for other divisions (27 November 2026), BUILT, NOT LIVE - branch feat/district-import-019
+- Owner decisions recorded in DISTRICT_PLAN.md Phase 1: one app for every division (later Hello District 87, no separate Division K app; 013 and the division build are not released), Division K leader dashboards like Division G, onboarding a priority, map not.
+- 019_district_imports.sql (test project): see schema README. Production Division K stays closed until the PDPA notice is live.
+- deployment/member-import.js: rows for clubs not in Division G's lists but in the district list go to the member database only (Division G's shared lists and alerts are untouched); officer lists likewise become seats via hdg_import_club_officers (needs a Member ID column). make_v666.py: offline v666 = v665 with version bumped (04ca9664…).
+- Tested: access_matrix.py 352/352. Browser as the test maintainer: mixed G+K list with K closed (K held back, reported); K opened: K joiner added, missing K members marked past, K officer list gave President and Secretary seats; Division G officer list unchanged. Test project reset afterwards.
+- Left: PDPA notice draft for the owner; go-live (019 to production with permission diff, v666 upload, storage-policy-v666.sql, release switch).
+
 ## v665 member list import into the member database (26 November 2026), LIVE
 - Owner approved "Make it live and merge" on 26 Nov 2026: 018 applied to production after a rolled-back dry run (permission diff: only hdg_import_club_members, hdg_resolve_import_conflict, hdg_undo_member_import granted to authenticated; helpers and the two import log tables closed; no anon grants; nothing existing changed). v665 leader/member files and .gz uploaded and verified by download, storage-policy-v665.sql applied, hdg_releases current = v665; real leader and member accounts each read only their own file. Division K file not uploaded.
 - 018_member_import.sql (test project only): hdg_import_club_members(club, as_of, rows, snapshot) for leaders of the club (leads_club, as 017). Rows hold only memberId, name, email, city, active, joinedOn, paidUntil (any other key is refused). Match by member ID without leading zeros (new IDs padded to 8 digits); hand-corrected name/email/city kept and returned as conflicts; an older list than hdg_import_freshness 'roster' changes nothing ({stale}); snapshot marks missing members past. Every changed row's prior state goes to hdg_sync_private.member_import_changes; hdg_undo_member_import(id) restores a club's latest import (importer, district admin, maintainer), skipping rows changed since. hdg_resolve_import_conflict(person, field, value, take).

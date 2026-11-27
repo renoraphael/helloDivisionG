@@ -71,7 +71,7 @@ def foundation_sql():
     truncate public.hdg_roles, public.hdg_memberships, public.hdg_import_freshness, public.hdg_club_alignment,
       public.hdg_areas, public.hdg_people, public.hdg_clubs, public.hdg_divisions, public.hdg_program_years cascade;
     insert into public.hdg_program_years(year_start, transition_opens) values (2025, '2025-05-15'), (2026, '2026-05-15'), (2027, '2027-05-15');
-    insert into public.hdg_divisions(code, name) values ('G', 'Division G'), ('K', 'Division K');
+    insert into public.hdg_divisions(code, name, config) values ('G', 'Division G', '{{"memberImport": "open"}}'), ('K', 'Division K', '{{}}');
     insert into public.hdg_areas(year_start, code, division_code) values
       (2025, 'G1', 'G'), (2025, 'G2', 'G'), (2026, 'G1', 'G'), (2026, 'G2', 'G'), (2026, 'K1', 'K'), (2026, 'K2', 'K'),
       (2027, 'G1', 'G'), (2027, 'K1', 'K'), (2027, 'K2', 'K');
