@@ -16,7 +16,7 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 
 ## Verified Supabase environments
 
-- **Singapore production** `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`) serves v666 and is currently named **Hello Division G Test**. Requested dashboard name **Hello Division G** is pending the owner's rename approval.
+- **Singapore production** `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`) serves v666 and is named **Hello Division G**. The owner approved the display name change on 28 November 2026.
 - **Singapore synthetic test** `oenawxeckerazwhvlpse` (`ap-southeast-1`) is **Hello Division G Synthetic Test**.
 - **Paused Seoul fallback** `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`) is **Hello Division G**. Use the ref and region to disambiguate it.
 

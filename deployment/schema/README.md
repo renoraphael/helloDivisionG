@@ -3,7 +3,7 @@
 - `000_baseline.sql` and `001_member_community.sql` hold the production structure as of v645 (tables, constraints, functions, views, row-level security, policies, grants, auth trigger, private bucket). Structure only: no records.
 - The Free synthetic test project is `oenawxeckerazwhvlpse` (Hello Division G Synthetic Test, Singapore). It was bootstrapped with schema 000–020 and populated with invented accounts, clubs, and app fixtures.
 - Apply 000 and 001 only to a fresh test project. Numbered migrations reach production through a separate owner-approved release after the access suite and a permission diff pass (project/DISTRICT_PLAN.md rules 28–31). Verify project refs before running SQL:
-  - **Singapore production** `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`) is currently **Hello Division G Test**. The intended dashboard name **Hello Division G** awaits approval for the rename.
+  - **Singapore production** `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`) is **Hello Division G**.
   - **Singapore synthetic test** `oenawxeckerazwhvlpse` (`ap-southeast-1`) is **Hello Division G Synthetic Test**.
   - **Paused Seoul fallback** `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`) is also named **Hello Division G** and is never a deployment target.
 
