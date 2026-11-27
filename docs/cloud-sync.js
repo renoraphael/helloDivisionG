@@ -278,6 +278,7 @@ async function showMemberCommunity(data){
  document.open();
  document.write(html.replace(marker,()=> 'window.HDG_MEMBER_V632_CONTEXT='+context+';'+greeting));
  document.close();
+ mountPrivacy();
 }
 /* Division apps (deployment/schema/013, build_division_app.py): a leader whose role is in a division other than
    Division G opens that division's own build, when one is current and the division's data answers. Anything missing
@@ -298,6 +299,7 @@ async function openDivisionApp(){
  document.open();
  document.write(html.replace(marker,()=> 'window.HDG_MEMBER_V632_CONTEXT='+context+';'));
  document.close();
+ mountPrivacy();
  return true;
 }
 /* Error reports to the maintainer (rule 32): at most 5 per page, each different, sent without the sign-in token.
@@ -486,15 +488,27 @@ function showDivisionSetup(ctx){
  card.append(out);
  el('hdg-cloud-gate').hidden=false;
 }
+function privacyRpc(name, args={}){
+ // The protected app and launcher share the same session. Use its latest refresh token.
+ session=JSON.parse(sessionStorage.getItem(sessionKey)||'null');
+ return request('/rest/v1/rpc/'+name,args);
+}
+function mountPrivacy(){
+ if(global.HDGPrivacy)global.HDGPrivacy.mount(privacyRpc,cloud.signOutMember).catch(error=>{
+  const result=el('hdg-privacy-settings')?.querySelector('[role=status]');
+  if(result)result.textContent=error.message;
+ });
+}
 async function connect(){
  if(global.HDG_ENTRY_LOADER){
+  if(global.HDGPrivacy)await global.HDGPrivacy.review(privacyRpc,cloud.signOutMember);
   const mode=await request('/rest/v1/rpc/hdg_access_mode',{});
   if(mode==='member'){
    await showMemberCommunity(await request('/rest/v1/rpc/hdg_member_community',{}));
    return;
   }
-  if(mode==='setup'){if(await openDivisionApp())return;showDivisionSetup(await request('/rest/v1/rpc/hdg_my_context',{}));return;}
-  if(mode!=='leader')throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');
+  if(mode==='setup'){if(await openDivisionApp())return;showDivisionSetup(await request('/rest/v1/rpc/hdg_my_context',{}));mountPrivacy();return;}
+  if(mode!=='leader'){mountPrivacy();throw new Error('Your verified email is not matched to an active membership. Use the email on your Toastmasters record or contact your club.');}
   await readState();
   el('hdg-auth-message').textContent='Opening Hello Division G…';
   const app=await currentAppFile('community','v666-community.html');
@@ -503,6 +517,7 @@ async function connect(){
   global.HDG_ENTRY_LOADER=false;
   const connectedHtml=useCurrentBackend(html);
   document.open();document.write(connectedHtml);document.close();
+  mountPrivacy();
   return;
  }
  const row=await readState();

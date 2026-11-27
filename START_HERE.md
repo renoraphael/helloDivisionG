@@ -5,6 +5,13 @@ Website: https://renoraphael.github.io/helloDivisionG/
 
 Use this project with any coding assistant. GitHub stores tracked code, instructions, history, branches, and PRs. It does not share chat memory or grant access to another tool. Each assistant needs its own authorized GitHub connection or a checkout on the owner's Mac.
 
+## Supabase environments
+
+- **Production** is Singapore, project ref `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`). Use this exact ref for approved production work.
+- **Synthetic tests** use the separate Singapore project `oenawxeckerazwhvlpse`. Seed invented data only.
+- The former Seoul production project `bhbgusdxqbjwsdlzhurb` is paused. Keep it paused during the production stability period. A final verified backup and explicit owner approval are required before deleting it.
+- The 27 November 2026 decision retired migration 013, migration 014, and the separate Division K build from the production release path. Division K uses the shared app. The original SQL and build files remain for synthetic tests and reference.
+
 ## Start each task
 1. Read AGENTS.md, project/ARCHITECTURE.md, project/DISTRICT_PLAN.md (binding agreed rules), and project/HANDOFF.md.
 2. Inspect the current branch, commit, working changes, and open PRs. Pull only after ensuring that existing local work is safe.

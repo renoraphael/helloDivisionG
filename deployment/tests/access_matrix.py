@@ -375,7 +375,9 @@ for r, want in (('admin', 'leader'), ('officer', 'leader'), ('member', 'member')
     s, mode = rpc('hdg_access_mode', T[r])
     check(f'{r} keeps access mode {want}', mode == want, str(mode))
 s, ctx = rpc('hdg_my_context', T['outsider'])
-check('an unknown account gets no setup context', ctx in (None, ''), str(ctx)[:60])
+check('an unknown account gets onboarding context without district setup details',
+      s == 200 and ctx.get('accessMode') == 'none' and ctx.get('name') is None
+      and ctx.get('roles') == [] and ctx.get('divisions') == [])
 
 # ---------------------------------------------------------------- 011 division council: read-only, edit by exception
 kk = person('dd_k', P['kappa2_no_account'])
@@ -773,6 +775,11 @@ for r in ('dd_k', 'dd_g', 'am'):
     s, _ = rpc('hdg_set_division_import', T[r], {'p_division': 'K', 'p_open': True})
     check(f'019 {r} cannot open a division\'s imports', s != 200, str(s))
 s, _ = rpc('hdg_set_division_import', T['admin'], {'p_division': 'K', 'p_open': True})
+check('020 Division K cannot open until a privacy notice is published', s != 200 and s != 204)
+gate_notice = 'test-gate-' + uuid.uuid4().hex
+s, _ = rpc('hdg_publish_privacy_notice', T['admin'], {'p_version': gate_notice, 'p_body': 'Fictional import gate notice.'})
+assert s in (200, 204), f'Could not publish synthetic import gate notice: HTTP {s}'
+s, _ = rpc('hdg_set_division_import', T['admin'], {'p_division': 'K', 'p_open': True})
 check('019 the maintainer opens Division K imports', s in (200, 204) and club_row('dd_k', CK)[1].get('canImport') is True, str(s))
 s, _ = imp('dd_g', K_ROWS, club=CK)
 check('019 the Division G Director cannot import a Division K club', s != 200, str(s))
@@ -792,6 +799,153 @@ sql("update public.hdg_divisions set config = '{}' where code = 'K'; "
     "delete from public.hdg_people where ltrim(ti_member_id, '0') = '1234567'; "
     f"update public.hdg_people set name = '{NAME_DDG}', hand_corrected = '{{}}' where id = '{P['dd_g']}'; "
     f"delete from public.hdg_import_freshness where club_number in ('{C2}', '{CK}'); delete from hdg_sync_private.member_imports where club_number in ('{C2}', '{CK}')")
+
+sql(f"delete from hdg_sync_private.privacy_notices where version='{gate_notice}'")
+
+# 020: privacy rights, retention and onboarding on fictional data.
+from test_env import keys
+from secrets import token_urlsafe
+
+stamp = uuid.uuid4().hex[:12]
+v1, v2 = f'test-{stamp}-1', f'test-{stamp}-2'
+for fn in ('hdg_privacy_notice', 'hdg_my_privacy', 'hdg_export_my_data', 'hdg_remove_my_details',
+           'hdg_request_deletion', 'hdg_privacy_deletion_queue', 'hdg_my_context'):
+    s, _ = rpc(fn, None)
+    check(f'020 signed out cannot call {fn}', s not in (200, 204), str(s))
+s, _ = rpc('hdg_publish_privacy_notice', T['member'], {'p_version': v1, 'p_body': 'Fictional notice version one.'})
+check('020 member cannot publish a notice', s not in (200, 204), str(s))
+s, _ = rpc('hdg_publish_privacy_notice', T['admin'], {'p_version': v1, 'p_body': 'Fictional notice version one.'})
+check('020 maintainer can publish a notice', s in (200, 204), str(s))
+s, n = rpc('hdg_privacy_notice', T['member'])
+check('020 current notice includes version and text and is unaccepted at first', s == 200 and n.get('version') == v1
+      and n.get('body') == 'Fictional notice version one.' and n.get('acceptedAt') is None, str(s))
+s, accepted = rpc('hdg_accept_privacy_notice', T['member'], {'p_version': v1})
+s2, duplicate = rpc('hdg_accept_privacy_notice', T['member'], {'p_version': v1})
+s3, other_notice = rpc('hdg_privacy_notice', T['officer'])
+check('020 acceptance has a timestamp, retries preserve it, and it is isolated per account',
+      s == s2 == s3 == 200 and accepted and accepted == duplicate and other_notice.get('acceptedAt') is None)
+s, _ = rpc('hdg_publish_privacy_notice', T['admin'], {'p_version': v2, 'p_body': 'Fictional notice version two.'})
+s2, changed = rpc('hdg_privacy_notice', T['member'])
+s3, _ = rpc('hdg_accept_privacy_notice', T['member'], {'p_version': v1})
+check('020 new version requires acceptance again and a stale version cannot be accepted',
+      s in (200, 204) and s2 == 200 and changed.get('version') == v2 and changed.get('acceptedAt') is None and s3 != 200)
+s, _ = rpc('hdg_accept_privacy_notice', T['member'], {'p_version': v2})
+check('020 the new notice is accepted separately', s == 200)
+
+s, _ = rpc('hdg_request_deletion', T['member'])
+check('020 active member cannot request full deletion', s != 200, str(s))
+s, _ = rpc('hdg_privacy_deletion_queue', T['am'])
+check('020 district officer cannot read the maintainer queue', s != 200, str(s))
+s, _ = rpc('hdg_complete_deletion', T['am'], {'p_request': str(uuid.uuid4())})
+check('020 district officer cannot process queued requests', s != 200, str(s))
+
+step = 'member-welcome-' + stamp
+s, _ = rpc('hdg_mark_onboarding_seen', None, {'p_step': step})
+check('020 signed out cannot mark an onboarding step', s != 200, str(s))
+s, first_seen = rpc('hdg_mark_onboarding_seen', T['member'], {'p_step': step})
+s2, still_seen = rpc('hdg_mark_onboarding_seen', T['member'], {'p_step': step})
+s3, member_context = rpc('hdg_my_context', T['member'])
+s4, officer_context = rpc('hdg_my_context', T['officer'])
+check('020 only the signed-in account sees its onboarding progress, and retries keep the first timestamp',
+      s == s2 == s3 == s4 == 200 and first_seen and first_seen == still_seen
+      and member_context['onboardingSeen'].get(step) == first_seen and step not in officer_context['onboardingSeen'])
+s, k_context = rpc('hdg_my_context', T['dd_k'])
+check('020 current roles include role and scope for tutorial selection', s == 200 and
+      any(r['role'] == 'division_director' and r['scopeType'] == 'division' and r['scope'] == 'K' for r in k_context['roles']))
+s, stranger_context = rpc('hdg_my_context', T['outsider'])
+check('020 a signed-in account without a membership still gets its onboarding context',
+      s == 200 and stranger_context.get('roles') == [] and stranger_context.get('onboardingSeen') == {})
+
+# Seed dedicated fixtures so testing irreversible operations never touches the standard test accounts.
+_, svc = keys()
+pw = token_urlsafe(24)
+privacy_email = f'privacy-fixture-{stamp}@example.com'
+s, user = request('POST', '/auth/v1/admin/users', svc, svc,
+                  {'email': privacy_email, 'password': pw, 'email_confirm': True})
+assert s in (200, 201), f'Could not create synthetic privacy account: HTTP {s}'
+account = user['id']
+s, signed = request('POST', '/auth/v1/token?grant_type=password', KEY,
+                    body={'email': privacy_email, 'password': pw})
+assert s == 200, f'Could not sign in synthetic privacy account: HTTP {s}'
+pt = signed['access_token']
+person, role, expired, recent, multi, legacy = [str(uuid.uuid4()) for _ in range(6)]
+ids = ','.join(f"'{x}'" for x in (person, expired, recent, multi, legacy))
+try:
+    sql(f"""
+    insert into public.hdg_people(id,name,email,user_id,nickname,aliases,pronunciation,photo_path,photo_consent)
+      values ('{person}','Synthetic Privacy Subject','{privacy_email}','{account}','Fixture alias',array['Fixture other'],
+              'Fixture pronunciation','fixture-photo',true),
+      ('{expired}','Nightly expired',null,null,null,'{{}}',null,null,false),
+      ('{recent}','Nightly recent',null,null,null,'{{}}',null,null,false),
+      ('{multi}','Nightly multi-club',null,null,null,'{{}}',null,null,false),
+      ('{legacy}','Nightly legacy',null,null,null,'{{}}',null,null,false);
+    insert into public.hdg_memberships(person_id,club_number,status,ended_on)
+      values ('{person}','9000003','past',current_date-2),
+      ('{expired}','9000003','past',(hdg_sync_private.today()-interval '12 months')::date),
+      ('{recent}','9000003','past',(hdg_sync_private.today()-interval '12 months')::date + 1),
+      ('{multi}','9000003','past',current_date-500),('{multi}','9000004','active',null),
+      ('{legacy}','9000003','past',current_date-500);
+    insert into public.hdg_roles(id,person_id,role,scope_type,scope_code,year_start,starts_on,ends_on)
+      values ('{role}','{person}','club_vpe','club','9000003',2025,'2025-07-01','2026-06-30');
+    insert into hdg_sync_private.legacy_records(kind,key,data)
+      values ('member_notes','{legacy}',jsonb_build_object('personId','{legacy}'));
+    """)
+    s, exported = rpc('hdg_export_my_data', pt)
+    s2, member_export = rpc('hdg_export_my_data', T['member'])
+    check('020 export includes only own account, profiles, memberships and roles, without auth credentials',
+          s == s2 == 200 and exported['account']['id'] == account and 'encrypted_password' not in exported['account']
+          and [row['id'] for row in exported['people']] == [person]
+          and exported['memberships'][0]['club_number'] == '9000003' and exported['roles'][0]['id'] == role
+          and all(row['id'] != person for row in member_export['people']))
+    check('020 export includes both per-version acceptances and own onboarding progress',
+          {a['version'] for a in member_export['consents']} >= {v1, v2} and step in member_export['onboarding'])
+    s, removed = rpc('hdg_remove_my_details', pt)
+    s2, after_profile = rpc('hdg_export_my_data', pt)
+    current = after_profile['people'][0]
+    check('020 self-service clears profile fields and their copies in edit history, keeping required identity fields',
+          s == s2 == 200 and removed == 1 and current['name'] == 'Synthetic Privacy Subject'
+          and current['email'] == privacy_email and current['aliases'] == [] and current['photo_consent'] is False
+          and all(current[f] is None for f in ('nickname','pronunciation','photo_path'))
+          and 'Fixture alias' not in str(after_profile['recordHistory']))
+    s, pending = rpc('hdg_request_deletion', pt)
+    s2, repeated = rpc('hdg_request_deletion', pt)
+    s3, queue = rpc('hdg_privacy_deletion_queue', T['admin'])
+    request_id = pending['id']
+    check('020 eligible requests enter the queue once with a 30-day deadline',
+          s == s2 == s3 == 200 and pending == repeated and any(r['id'] == request_id and r['email'] == privacy_email
+          and r['dueAt'] == pending['due_at'] for r in queue)
+          and sql(f"""select abs(extract(epoch from (due_at-requested_at))-2592000)<1 as correct
+                     from hdg_sync_private.privacy_deletion_requests where id='{request_id}'""")[0]['correct'])
+    sql(f"update public.hdg_memberships set status='active' where person_id='{person}'")
+    s, _ = rpc('hdg_complete_deletion', T['admin'], {'p_request': request_id})
+    check('020 maintainer completion rechecks membership after the request was submitted', s != 200)
+    sql(f"update public.hdg_memberships set status='past' where person_id='{person}'")
+    s, completed = rpc('hdg_complete_deletion', T['admin'], {'p_request': request_id})
+    ret = sql(f"""select not exists(select 1 from auth.users where id='{account}') as account_gone,
+       not exists(select 1 from public.hdg_people where id='{person}') as person_gone,
+       exists(select 1 from public.hdg_roles where id='{role}' and person_id is null and former_member_name='Former member') as anonymized,
+       exists(select 1 from hdg_sync_private.privacy_deletion_requests where id='{request_id}' and user_id is null
+         and completed_at is not null) as completed""")[0]
+    check('020 completion erases the account and profile and preserves the anonymized historical seat',
+          s == 200 and completed is True and all(ret.values()), str(s))
+
+    sql("select hdg_sync_private.privacy_nightly_erase()")
+    remaining = {r['id'] for r in sql(f'select id from public.hdg_people where id in ({ids})')}
+    check('020 nightly retention erases at exactly 12 months and protects newer, active and legacy-linked records',
+          remaining == {recent, multi, legacy}, str(len(remaining)))
+    job = sql("""select schedule, command, active from cron.job where jobname='hdg-privacy-retention'""")
+    check('020 pg_cron schedules the private retention task once every night',
+          len(job) == 1 and job[0]['active'] and job[0]['schedule'] == '30 18 * * *'
+          and 'privacy_nightly_erase()' in job[0]['command'])
+finally:
+    sql(f"""delete from hdg_sync_private.privacy_deletion_requests where user_id='{account}' or id::text='{locals().get('request_id','')}';
+       delete from hdg_sync_private.legacy_records where kind='member_notes' and key='{legacy}';
+       delete from public.hdg_roles where id='{role}'; delete from public.hdg_people where id in ({ids});
+       delete from auth.users where id='{account}';
+       delete from hdg_sync_private.onboarding_seen where step='{step}';
+       delete from hdg_sync_private.privacy_acceptances where version in ('{v1}','{v2}');
+       delete from hdg_sync_private.privacy_notices where version in ('{v1}','{v2}');""")
+
 
 failed =[r for r in results if not r[0]]
 for ok, name, detail in results:

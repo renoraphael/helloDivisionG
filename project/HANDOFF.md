@@ -14,6 +14,16 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
+## Privacy, onboarding and Singapore housekeeping (28 November 2026)
+
+- Migration 020 and the launcher UI are under review. The synthetic project contains the schema and the pg_cron job. Production has not received migration 020, a new notice or the erasure job. Division K imports remain closed.
+- The privacy backend records consent timestamps by version, supports a signed-in per-record export and profile clearing, and gives the maintainer a deletion queue with a 30-day deadline. Eligibility is rechecked under a membership write lock. Past officer seats preserve their dates with the “Former member” label.
+- The active Division G shared snapshot, legacy imports and retained copies still require separate work. Known structured legacy matches block automatic or manual erasure. The self-service export does not cover archived HTML or unstructured awards and meeting history. Review these before describing legacy account deletion and export as complete.
+- `hdg_my_context` now includes access mode, current roles and scope, and private per-account tutorial progress. `hdg_mark_onboarding_seen` records the first view of a step.
+- The private scheduled backup ran successfully once with AES-256-GCM, a macOS Keychain-held key, and a check that the authenticated decrypted dump catalog contains the app, Auth and Storage metadata. Subsequent runs are scheduled daily at 03:15 Bali time, using the local Mac and its Supabase login. Backup archives have a 28-day local rotation and are outside the repository. The backup covers the database. Supabase Storage file bodies are separate. A restore into a fresh database has not been attempted.
+- The read-only Singapore production Supabase advisors reported 45 warnings and 34 informational items, with no error-level findings. Warnings included anonymous RPCs for ballots and error reporting, authenticated security-definer RPCs, and missing leaked-password protection. Performance findings included seven unindexed foreign keys and seven unused indexes. No advised changes were applied.
+- Seoul remains paused. After a few weeks of stable Singapore production, make a final verified Seoul backup and request explicit deletion approval. Migration 013, migration 014 and the separate Division K build are retired for production.
+
 ## Singapore test project and v666 release (28 November 2026)
 
 - Seoul production `bhbgusdxqbjwsdlzhurb` was paused after the Singapore cutover. Singapore production `ovmdhkrkogivlvjnbqpj` serves the live launcher and ballot.
