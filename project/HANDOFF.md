@@ -18,6 +18,7 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 
 - Owner approved the switch plan. The cutover branch contains synthetic migration 023 and the private v668 app patch. Production still serves the shared-record dashboard and the existing checked shadow copy.
 - Rehearsal covers the five-minute expiry, non-leader saves, concurrent shared-save lock, transactional structured event edits and rollback to the shared dashboard. v668's owner-only task panel uses a separate API and never serializes tasks to the shared record. The app package is private and unpublished.
+- Production effective-access preflight found that 1 of the 4 currently approved shared-dashboard accounts can read or write the new records. The other 3 need verified, explicit roles and scopes before switching. No roles were assigned during the check.
 - The live switch needs full wiring and rehearsal of the current dashboard editors, permission comparison after final schema changes, and a fresh equal shadow. Prepare the final refresh from a verified prior shadow baseline and leave the save pause inactive until those gates pass. Division K remains closed pending notice publication and the owner's decision.
 
 ## Division G leader data shadow copy (28 November 2026)

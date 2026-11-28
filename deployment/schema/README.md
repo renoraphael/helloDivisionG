@@ -81,6 +81,7 @@ Production note (21 November 2026): 002 resets all function grants in `public` a
 ## Division G cutover rehearsal
 
 - The owner approved the switch plan. Activate the per-record dashboard only after the original TLI, contest, visit, performance and task workflows pass end to end on fictional data and the refreshed production shadow matches the approved scope.
+- Run `deployment/tools/leader_cutover_access_check.sql` against the selected project as a read-only preflight. Resolve any currently approved account that would lose access by verifying its intended role and area against the approved roster.
 - The migration starts with the shared dashboard selected. A maintainer can pause migrated saves for up to five minutes and resume manually. Existing open tabs keep pending edits for retry. The synthetic route returns to shared with one maintainer call to `hdg_return_leader_to_shared`.
 - The synthetic compatibility mirror supports structured updates to linked events. It commits the per-record row and shared fallback together, keeps independently changed fields, and sets aside conflicts. The existing fallback retains excluded text and original attachments. Event creation and deletion, attendance writes and the existing editors still require complete compatibility checks.
 - The v668 preview uses the owner-only task APIs independently of the source for leader events. The protected build has not been released. No production pause or routing change has been applied.
