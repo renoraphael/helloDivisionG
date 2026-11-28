@@ -43,6 +43,7 @@ python3 deployment/tests/club_import_check.py    # club CSV import on synthetic 
 | 020_privacy.sql | Versioned privacy notice, self-service export and profile clearing, maintainer correction and deletion requests, retention and per-account onboarding | **production, applied 28 November 2026 in Singapore**. Notice approval pending |
 | 021_bulk_division_roles.sql | Maintainer-only preview and atomic Director, Area Director and council assignments by imported member ID | synthetic test; **Singapore production, applied 28 November 2026** |
 | 022_leader_records.sql | Scoped events and visits, multi-area event coverage, session and round attendance, supplemental club figures, private tasks, and an official DCP projection from 009 | synthetic test; **Singapore production, applied 28 November 2026** |
+| 023_leader_cutover.sql | Timed save pause, event compatibility writes and one-step route reset | synthetic draft, rollout gated by end-to-end app rehearsal |
 
 The setup script writes the synthetic test passwords and the test project's publishable key to `local-data/test-project.json` (git-ignored). The test scripts default to the synthetic Singapore project. An optional `HDG_TEST_REF` override must name a separate synthetic project. Both production refs are rejected.
 
@@ -76,3 +77,11 @@ Production note (21 November 2026): 002 resets all function grants in `public` a
 - `deployment/tools/bulk_division_roles.py` takes a private CSV with header `memberId,role,area,title`. Use `division_director`, `area_director` or `division_council`, with area for an Area Director and a title for council. Preview is the default. Applying a batch requires a signed-in maintainer, an eligible imported roster, and an open division.
 - `deployment/tools/check_leader_copy.py <private-source.json> <private-mapping.json> --shadow <private-extract.json>` compares canonical records and prints counts only. The mapping holds `sourceDate`, `alignment` (program year → club number → approved area), and `memberships` (normalized club number and Toastmasters member ID joined by a colon → membership UUID). Use files for synthetic fixtures and keep production source and extracts in memory.
 - The private v667 desktop preview adds a read-only view of scoped official figures and the latest Supabase import. The 6 PM WITA District 87 Dashboard Sync continues producing its ChatGPT report. Automatic ingestion needs a verified dated payload from the collector and a separate production deployment decision.
+
+## Division G cutover rehearsal
+
+- The owner approved the switch plan. Activate the per-record dashboard only after the original TLI, contest, visit, performance and task workflows pass end to end on fictional data and the refreshed production shadow matches the approved scope.
+- Run `deployment/tools/leader_cutover_access_check.sql` against the selected project as a read-only preflight. Resolve any currently approved account that would lose access by verifying its intended role and area against the approved roster.
+- The migration starts with the shared dashboard selected. A maintainer can pause migrated saves for up to five minutes and resume manually. Existing open tabs keep pending edits for retry. The synthetic route returns to shared with one maintainer call to `hdg_return_leader_to_shared`.
+- The synthetic compatibility mirror supports structured updates to linked events. It commits the per-record row and shared fallback together, keeps independently changed fields, and sets aside conflicts. The existing fallback retains excluded text and original attachments. Event creation and deletion, attendance writes and the existing editors still require complete compatibility checks.
+- The v668 preview uses the owner-only task APIs independently of the source for leader events. The protected build has not been released. No production pause or routing change has been applied.

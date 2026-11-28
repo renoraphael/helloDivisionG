@@ -177,16 +177,40 @@ def result(records, blockers, excluded, shadow):
     return dict(blockers=dict(blockers), exclusions=dict(excluded), parity=compare(records, shadow))
 
 
+def refresh_delta(previous, current, shadow):
+    """Refresh only rows that still match the known, untouched shadow baseline."""
+    if previous != shadow:
+        raise ValueError('Shadow drifted from its verified source revision')
+    previous_keys = previous.keys()
+    current_keys = current.keys()
+    return {
+        'insert': {key: current[key] for key in sorted(current_keys - previous_keys)},
+        'update': {key: current[key] for key in sorted(current_keys & previous_keys)
+                   if current[key] != previous[key]},
+        'delete': sorted(previous_keys - current_keys),
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', type=Path, help='Authorized private snapshot or synthetic fixture')
     parser.add_argument('mapping', type=Path, help='Verified club alignment and membership links')
     parser.add_argument('--shadow', type=Path, required=True, help='Canonical extract from the shadow tables')
+    parser.add_argument('--previous-projection', type=Path,
+                        help='Verified canonical projection of the revision that seeded the shadow')
     args = parser.parse_args()
     records, blockers, excluded = plan_copy(load(args.source), load(args.mapping))
-    summary = result(records, blockers, excluded, load(args.shadow))
+    shadow = load(args.shadow)
+    summary = result(records, blockers, excluded, shadow)
+    if args.previous_projection:
+        try:
+            delta = refresh_delta(load(args.previous_projection), records, shadow)
+            summary['refresh'] = {operation: dict(Counter(key.split(':', 1)[0] for key in keys))
+                                  for operation, keys in delta.items()}
+        except ValueError:
+            summary['blockers']['shadow_baseline_drift'] = 1
     print(json.dumps(summary, indent=2, sort_keys=True))
-    return int(bool(blockers) or any(any(row[k] for k in ('missing', 'extra', 'changed'))
+    return int(bool(summary['blockers']) or any(any(row[k] for k in ('missing', 'extra', 'changed'))
                                      for row in summary['parity'].values()))
 
 

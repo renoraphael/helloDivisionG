@@ -40,6 +40,7 @@ class SyncQueue {
    this.status('Synced · revision '+this.revision);
   }catch(error){
    if(error.code==='40001'||error.status===409){this.conflict=true;this.status('Conflict: newer web data exists. Your local edits are preserved.','conflict');}
+   else if(error.code==='PT503'){this.status('Division G leader saves are paused. Your edits are saved on this device and will retry automatically.','offline');}
    else if(error.status===401||error.status===403){this.status('Sign in or officer approval is required. Local changes are preserved.','auth');}
    else this.status('Saved on this device; not synced. Retry when online.','offline');
   }finally{this.saving=false;}
