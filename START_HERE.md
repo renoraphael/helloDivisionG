@@ -7,9 +7,9 @@ Use this project with any coding assistant. GitHub stores tracked code, instruct
 
 ## Supabase environments
 
-- **Production** is Singapore, project ref `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`). Use this exact ref for approved production work.
-- **Synthetic tests** use the separate Singapore project `oenawxeckerazwhvlpse`. Seed invented data only.
-- The former Seoul production project `bhbgusdxqbjwsdlzhurb` is paused. Keep it paused during the production stability period. A final verified backup and explicit owner approval are required before deleting it.
+- **Production · Singapore** is `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`). The dashboard name is **Hello Division G**.
+- **Synthetic test · Singapore** is **Hello Division G Synthetic Test**, `oenawxeckerazwhvlpse` (`ap-southeast-1`). Seed invented data only.
+- **Paused fallback · Seoul** is **Hello Division G (Seoul, retired)**, `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`). Keep it paused during the production stability period. A final verified backup and explicit owner approval are required before deleting it.
 - The 27 November 2026 decision retired migration 013, migration 014, and the separate Division K build from the production release path. Division K uses the shared app. The original SQL and build files remain for synthetic tests and reference.
 
 ## Start each task
@@ -22,6 +22,13 @@ Use project/AI_START_PROMPT.md as the initial message in Claude, Grok, Antigravi
 
 ## Working locally
 The owner has a separate shared checkout with private-app/v632.html supplied locally and excluded from Git. Local coding tools can use that same folder sequentially. Simultaneous work needs separate working copies and task branches. Do not assume browser-only assistants can edit local files or push commits: connect their own GitHub access or have them return a patch.
+
+## Production backup and restore
+
+- Singapore production is **Hello Division G** (`ovmdhkrkogivlvjnbqpj`). The synthetic test project is `oenawxeckerazwhvlpse`. **Hello Division G (Seoul, retired)** (`bhbgusdxqbjwsdlzhurb`) remains paused.
+- Encrypted backups are in [Actions in the private hdg-backups repository](https://github.com/renoraphael/hdg-backups/actions). The workflow defines a nightly database backup including Auth and a weekly private app bucket backup. Artifacts expire after 30 days. Scheduled runs are gated until the owner configures the encryption recipient and repository secrets.
+- Download the database artifact to a private local folder. From a local checkout of the private backup repo, run `python3 scripts/restore-check.py <artifact-folder> <docker-context>` with Docker running and the official `postgres:17` image available. Enter the age private key from the password manager at the hidden local prompt. The script decrypts in memory, restores to an isolated temporary Docker PostgreSQL, compares row counts against the encrypted source manifest and removes the database.
+- The [private restore guide](https://github.com/renoraphael/hdg-backups#restore-drill) explains manual decryption and the weekly bucket manifest. Keep the private key in the password manager. The synthetic Supabase project is for fictional data only.
 
 ## Important current gap
 A public clone contains the launcher and access/sync code, but not the complete legacy v632 app source. Its member-bearing HTML is protected in Supabase. Full GitHub-only collaboration on the entire app requires separating legacy embedded data from executable source. Do not "solve" this by publishing the private HTML.

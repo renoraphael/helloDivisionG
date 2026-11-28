@@ -2,7 +2,10 @@
 
 - `000_baseline.sql` and `001_member_community.sql` hold the production structure as of v645 (tables, constraints, functions, views, row-level security, policies, grants, auth trigger, private bucket). Structure only: no records.
 - The Free synthetic test project is `oenawxeckerazwhvlpse` (Hello Division G Synthetic Test, Singapore). It was bootstrapped with schema 000–022 and populated with invented accounts, clubs, and app fixtures.
-- Apply 000 and 001 only to a fresh test project. Numbered migrations reach production through a separate owner-approved release after the access suite and a permission diff pass (project/DISTRICT_PLAN.md rules 28–31). Singapore production is `ovmdhkrkogivlvjnbqpj`. The retired Seoul project `bhbgusdxqbjwsdlzhurb` is paused and is never a deployment target.
+- Apply 000 and 001 only to a fresh test project. Numbered migrations reach production through a separate owner-approved release after the access suite and a permission diff pass (project/DISTRICT_PLAN.md rules 28–31). Verify project refs before running SQL:
+  - **Singapore production** `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`) is **Hello Division G**.
+  - **Singapore synthetic test** `oenawxeckerazwhvlpse` (`ap-southeast-1`) is **Hello Division G Synthetic Test**.
+  - **Paused Seoul fallback** `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`) is **Hello Division G (Seoul, retired)** and is never a deployment target.
 
 ## Running the access tests
 
@@ -37,9 +40,9 @@ python3 deployment/tests/club_import_check.py    # club CSV import on synthetic 
 | 017_club_exco.sql | Clubs manage their own Exco (owner decision 25 Nov 2026): any current officer of a club (and its leaders) gives a seat to an active member of the club, effective at once; officer list imports apply only to seats not changed by the club or a leader on or after the list date; seats missing from a newer list are vacated; hdg_roles gets source and source_at | test; production 25 Nov 2026 (owner approved) |
 | 018_member_import.sql | Toastmasters member list into hdg_people and hdg_memberships: leaders of the club only, city only (other row fields refused), member ID match, hand-corrected fields kept and reported, newest list wins per club, snapshot marks missing members past, undo of a club's latest import, conflict choice | test; **production, applied 26 November 2026** (owner approved) |
 | 019_district_imports.sql | Imports for clubs outside Division G (owner decisions 27 Nov 2026): hdg_import_clubs lists every club with whether the leader may import it; a division's imports open only when the maintainer opens them (hdg_set_division_import, after PDPA); the 017/018 import functions move behind that check; Division G open | test; **production, applied 28 November 2026 in Singapore** |
-| 020_privacy.sql | Versioned privacy notice, self-service export and profile clearing, maintainer deletion requests, retention and per-account onboarding | synthetic testing; production release pending |
-| 021_bulk_division_roles.sql | Maintainer-only preview and atomic Director, AD and council role assignment by imported member ID | synthetic only |
-| 022_leader_records.sql | Scoped TLI sessions and attendance, contests, performance and visits, plus owner-only tasks and a scoped projection from 009 | synthetic only |
+| 020_privacy.sql | Versioned privacy notice, self-service export and profile clearing, maintainer correction and deletion requests, retention and per-account onboarding | **production, applied 28 November 2026 in Singapore**. Notice approval pending |
+| 021_bulk_division_roles.sql | Maintainer-only preview and atomic Director, Area Director and council assignments by imported member ID | synthetic test; Singapore production release pending verification |
+| 022_leader_records.sql | Scoped events and visits, multi-area event coverage, session and round attendance, supplemental club figures, private tasks, and an official DCP projection from 009 | synthetic test; Singapore production release pending verification |
 
 The setup script writes the synthetic test passwords and the test project's publishable key to `local-data/test-project.json` (git-ignored). The test scripts default to the synthetic Singapore project. An optional `HDG_TEST_REF` override must name a separate synthetic project. Both production refs are rejected.
 
@@ -48,23 +51,25 @@ Production note (21 November 2026): 002 resets all function grants in `public` a
 
 ## Privacy and onboarding release
 
+- Production rollout on 28 November 2026 verified the overnight encrypted backup from 07:12 WITA and the Docker practice restore (69 matching tables, including Auth). The migration rehearsal rolled back before application.
+- Migration 020 added 30 permission entries. Existing grants, row-level policies, column grants and default privileges were unchanged. Thirteen new public RPCs granted EXECUTE to authenticated and service_role. The nine private functions, seven private tables, and retention-run sequence are owner-only. No anon or PUBLIC grant was added by migration 020.
+- Cron installation added 17 managed permission entries without changing existing permissions. Supabase's nine object-level PUBLIC ACLs in the new cron schema are unreachable by anon or authenticated because neither has schema USAGE. The nightly job runs as postgres.
+- Production probes under the authenticated role used the existing account identities for a leader, an active member and the sole maintainer. The exports were account-scoped, the active member's deletion request was rejected, and only the maintainer could see either queue. The probes rolled back and logged no individual data. The notice is still unpublished.
+
+
 - Publish approved notice text through `hdg_publish_privacy_notice` with a new immutable version. The launcher reads the current notice at sign-in, and each acceptance gets its own timestamp.
 - A tutorial reads `hdg_my_context` for `accessMode`, current `roles` with scope, and `onboardingSeen`. It calls `hdg_mark_onboarding_seen` with a stable step ID when shown.
-- `deployment/privacy-cron.sql` registers one pg_cron job for 02:30 Singapore/Bali time. Install it in the synthetic project before the access matrix. Production installation is a separate activation step because the job erases eligible records.
-- Deletion is serialized against membership changes, and the 12-month calculation uses the latest membership end. Existing records without enough evidence to determine an end date are excluded until reviewed. Historical officer seats keep their terms with the display name “Former member.”
+- `deployment/privacy-cron.sql` registers one pg_cron job for 02:30 Singapore/Bali time. Install it in the synthetic project before the access matrix. Production activation was approved on 28 November 2026. The first run started and finished at 2026-11-28 07:33:43 WITA. Count erased was 0.
+- Deletion is serialized against membership changes, and the 12-month calculation uses the latest membership end. Existing records without enough evidence to determine an end date are excluded until reviewed. Historical officer seats and normalized individual awards keep their history with the display name “Former member.”
+- The retention log contains only timestamps, run status and the total erased count. Roster corrections are private cases available to their requester through self-export and to the maintainer through Reports. They never enter the application error report feed.
 - The current per-record export does not include legacy Division G backups, private HTML or unstructured historical awards and meeting notes. A known legacy identity match flags exports and blocks completion or automatic erasure. The legacy cutover and archive remediation require separate review before describing the export or deletion as complete for those records.
-- The separate Division K app is retired. Keep Division K imports closed until the owner approves the notice and production privacy release. Migration 020 additionally requires a current notice and an enabled retention job before a maintainer can open a new division.
+- The separate Division K app is retired. Keep Division K imports closed until the owner approves and publishes the notice. Migration 020 additionally requires a current notice and an enabled retention job before a maintainer can open a new division.
 
+## Division G leader data shadow copy
 
-## Bulk Division K roles
-
-Use `deployment/tools/bulk_division_roles.py` with a private CSV containing the exact header `memberId,role,area,title`. Use role values `division_director`, `area_director` and `division_council`. Fill the area for Area Directors and the title for council. Preserve member IDs as text when preparing the CSV.
-
-Set `HDG_SUPABASE_PUBLISHABLE_KEY` to the target project's publishable key. Run the tool with `--email <maintainer-email> --year 2026` to preview in the synthetic project. The tool prompts for the password. Production use requires the approved release, the imported roster, an open division, an explicitly approved batch, and `--target production --apply`. A preview neither creates nor replaces assignments. Occupied seats must be resolved explicitly outside the batch.
-
-## Leader data shadow copy
-
-- Migration 022 adds a per-record API without switching dashboard reads or writes. Division and Area Directors use their own scopes. A division council reads within its division and can write only with edit rights. Tasks are private to the signed-in account, including from maintainers.
-- TLI attendance uses a session and a membership. Existing 009 data stays authoritative for official TI DCP figures. Supplemental performance data has its own record type.
-- For an approved rehearsal, run `python3 deployment/tools/check_leader_copy.py <private-snapshot.json> <private-mapping.json>`. The mapping has `alignment` (program year → club number → approved area), `taskOwners` (legacy profile → Auth account UUID), and `attendanceSessions` (club number and round → verified session and member ID mappings). The tool reports counts and blockers without printing member information. Add `--shadow <private-extract.json>` to compare canonical rows by source ID and content hash.
-- The planner reports multi-area sessions, unmapped round attendance, unverified task ownership, raw visit email and legacy performance overrides as explicit blockers. No live data was copied. Do not switch what the app reads or writes until an approved shadow copy reconciles and the owner approves the switch.
+- District plan rule 31 keeps the Division G shared record and revision history authoritative during the shadow copy. Migration 022 does not change dashboard routing. A switch requires a separate owner decision.
+- Events use approved alignment for their Toastmasters year. Combined events retain every covered area on one record. Officer round flags are deduplicated by membership, year and round. Unknown remains unknown, and session attendance requires evidence connecting the person to a specific session.
+- Legacy club dashboard figures keep the date the source revision was captured. Official Toastmasters values remain in `hdg_club_figures`. Hold free-text fields, raw visit email and automatic task dismissals in the shared record pending review.
+- `deployment/tools/bulk_division_roles.py` takes a private CSV with header `memberId,role,area,title`. Use `division_director`, `area_director` or `division_council`, with area for an Area Director and a title for council. Preview is the default. Applying a batch requires a signed-in maintainer, an eligible imported roster, and an open division.
+- `deployment/tools/check_leader_copy.py <private-source.json> <private-mapping.json> --shadow <private-extract.json>` compares canonical records and prints counts only. The mapping holds `sourceDate`, `alignment` (program year → club number → approved area), and `memberships` (normalized club number and Toastmasters member ID joined by a colon → membership UUID). Use files for synthetic fixtures and keep production source and extracts in memory.
+- The private v667 desktop preview adds a read-only view of scoped official figures and the latest Supabase import. The 6 PM WITA District 87 Dashboard Sync continues producing its ChatGPT report. Automatic ingestion needs a verified dated payload from the collector and a separate production deployment decision.

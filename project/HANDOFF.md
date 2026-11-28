@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 19 November 2026 (Asia/Makassar).
+Updated 28 November 2026 (Asia/Makassar).
 
 ## Owner's objective
 Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hello Division G project without losing changes, leaking member data, or relying on one chat's memory.
@@ -14,24 +14,28 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
-## Division K roles and leader records (28 November 2026)
+## Division G leader data shadow copy (28 November 2026)
 
-- Stacked on draft privacy PR #62. Migrations 021–022 were installed in the synthetic Singapore project only. No live roles, Division G records, or dashboard routing were changed.
-- `deployment/tools/bulk_division_roles.py` is the maintainer CSV tool. It previews imported active member IDs in the selected division and year, reports invalid and occupied seats, and applies valid batches atomically after the import gate opens. The tool is ready to receive fictional or approved rosters once available. No real roster was consumed.
-- Leader storage supports TLI, membership-linked attendance, contests, supplemental club performance, Area Director visits, and private personal tasks. Official DCP snapshots are projected from 009 using the approved historical alignment. The 020 self-export now includes a person's own tasks and attendance. No browser or iPhone build changed.
-- Final access matrix passed 415/415. The exact CSV preview ran against synthetic Supabase. A three-record TLI, contest and visit rehearsal matched all projected fields after a database round-trip. Read-only production checks confirmed the migrations are absent and Division K imports remain closed.
-- `deployment/tools/check_leader_copy.py` is a read-only copy and parity preflight. A synthetic run verified matching content, drift detection, and ambiguous scope/attendance blockers. Division G still needs approved mappings, a shadow copy, reconciled totals, and the owner's explicit approval before the dashboard cutover. Privacy and backups precede any rollout.
+- The owner approved mappings 1–9. PR #63 contains the migration, mapping checks and access tests. Apply 021 and 022 only after the rolled-back permission diff and synthetic access suite pass. The current production dashboard stays on the shared record under rule 31.
+- Event scope follows the approved program-year alignment. Combined TLI and contest events are one row with exact area coverage. Round flags link to verified club memberships and are never guessed from training session dates. Leave unreviewed names and free text, original visit emails, and task dismissals in the shared record.
+- Division K imports stay closed pending publication of the notice and the owner's decision to open them. The bulk role tool provides a maintainer preview and applies only an approved batch in an open division.
+- The desktop v667 preview adds a read-only official figures panel in the existing District 87 sync section. It has been tested with synthetic browser logic. The 6 PM WITA ChatGPT collection still needs a validated machine-readable handoff for scheduled ingestion into Supabase.
 
-## Privacy, onboarding and Singapore housekeeping (28 November 2026)
+## Verified Supabase environments
 
-- Migration 020 and the launcher UI are under review. The synthetic project contains the schema and the pg_cron job. Production has not received migration 020, a new notice or the erasure job. Division K imports remain closed.
-- The final synthetic access suite passed 381/381, including the import gate and the 12-month cutoff in the Singapore calendar. The browser preview confirmed notice acceptance, self-service controls and the deadline queue using fictional data. No iPhone build was verified.
-- The privacy backend records consent timestamps by version, supports a signed-in per-record export and profile clearing, and gives the maintainer a deletion queue with a 30-day deadline. Eligibility is rechecked under a membership write lock. Past officer seats preserve their dates with the “Former member” label.
-- The active Division G shared snapshot, legacy imports and retained copies still require separate work. Known structured legacy matches block automatic or manual erasure. The self-service export does not cover archived HTML or unstructured awards and meeting history. Review these before describing legacy account deletion and export as complete.
-- `hdg_my_context` now includes access mode, current roles and scope, and private per-account tutorial progress. `hdg_mark_onboarding_seen` records the first view of a step.
-- The private scheduled backup ran successfully once with AES-256-GCM, a macOS Keychain-held key, and a check that the authenticated decrypted dump catalog contains the app, Auth and Storage metadata. Subsequent runs are scheduled daily at 03:15 Bali time, using the local Mac and its Supabase login. Backup archives have a 28-day local rotation and are outside the repository. The backup covers the database. Supabase Storage file bodies are separate. A restore into a fresh database has not been attempted.
-- The read-only Singapore production Supabase advisors reported 45 warnings and 34 informational items, with no error-level findings. Warnings included anonymous RPCs for ballots and error reporting, authenticated security-definer RPCs, and missing leaked-password protection. Performance findings included seven unindexed foreign keys and seven unused indexes. No advised changes were applied.
-- Seoul remains paused. After a few weeks of stable Singapore production, make a final verified Seoul backup and request explicit deletion approval. Migration 013, migration 014 and the separate Division K build are retired for production.
+- **Singapore production** `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`) serves v666 and is named **Hello Division G**. The owner approved the display name change on 28 November 2026.
+- **Singapore synthetic test** `oenawxeckerazwhvlpse` (`ap-southeast-1`) is **Hello Division G Synthetic Test**.
+- **Paused Seoul fallback** `bhbgusdxqbjwsdlzhurb` (`ap-northeast-2`) is **Hello Division G (Seoul, retired)**. The project remains paused.
+
+## Privacy and onboarding production release (28 November 2026)
+
+- Owner approved applying migration 020 and enabling nightly retention on Singapore production `ovmdhkrkogivlvjnbqpj`. Verified the encrypted overnight backup from 07:12 WITA and the separate practice restore with all 69 table counts matching, including Auth.
+- The migration rehearsed inside a rolled-back transaction, then committed with matching permission snapshots. It added 30 permission entries, with no change to existing grants or row-level policies and no anon or PUBLIC grants. Thirteen new public RPCs grant EXECUTE to authenticated and service_role. Nine private functions, seven private tables and one sequence have owner-only ACLs.
+- The separate pg_cron activation added 17 managed entries and changed no pre-existing privileges. Its nine object-level PUBLIC ACLs are behind cron schema USAGE, which neither anon nor authenticated has. The nightly job is active at 02:30 WITA. Its first run started and finished at 2026-11-28 07:33:43 WITA and erased 0.
+- Production role probes under rolled-back database authentication claims used real leader and member accounts and the sole maintainer. Both exports stayed account-scoped, an active member was denied full deletion, and only the maintainer could see both queues. The probes returned no individual data. The synthetic matrix passed 399/399. The fictional correction UI browser preview passed, and no iPhone build was checked.
+- The backend records consent timestamps by version, exports per-record data, clears optional details, allows roster correction requests, and runs the maintainer deletion queue with a 30-day deadline. Active club memberships block deletion. Historical officer seats and normalized awards keep the label “Former member.” Onboarding reads current roles, scope and per-account tutorial progress.
+- The plain-English notice and Your data copy are private drafts awaiting the owner's wording approval and legal or district review. There is no published notice. Division K imports remain closed. Known structured legacy matches block erasure, and the self-service export does not cover archived HTML or unstructured award and meeting history. The approved legacy cutover must address these limits.
+- The read-only production advisors previously reported 45 warnings and 34 informational items with no error-level findings. Seoul remains paused. Migration 013, migration 014 and the separate Division K build are retired for production.
 
 ## Singapore test project and v666 release (28 November 2026)
 
@@ -398,3 +402,10 @@ The Member Poster Generator opens without a selected club or meeting. Resume las
 - The launcher switches Auth, data, and ballots to Singapore, isolates sessions by project, and aligns the inline adapter for protected historical releases without rewriting archived bytes. Test and import commands guard both production refs.
 - Owner approved the live switch after data and access verification. The restored application and persistent Auth data were compared by table checksum. Policies and grants matched Seoul. Leader and Member role probes passed with cross-channel, unapproved and anonymous access denied.
 - During cutover, the Seoul Data API rejects write-capable requests so old tabs cannot save to the retired backend. Seoul retains its data and private files. For rollback, reconcile Singapore writes first, revert launcher routing, then remove the known Seoul pre-request gate and reload PostgREST configuration. Do not reset or seed either production project. v666 and migration 019 are recorded above.
+
+## Private GitHub Actions backups (28 November 2026)
+
+- The backup workflow is in the new private repository `renoraphael/hdg-backups`. The credential-free encryption self-test passed. Scheduled runs await the owner's public age recipient and production connection and storage secrets. Keep the existing local encrypted schedule until the GitHub runs succeed.
+- The configured schedule is 03:15 Bali time nightly for the database and 03:30 Sundays for the private app bucket. Artifacts have 30-day retention and a repository budget guard. A fresh production dump of the app, Auth and Storage metadata compressed to approximately 1.38 MB before encryption. The previous full bucket measured about 16.05 MB after compression.
+- A Mac Docker drill restored an existing encrypted production dump to an isolated tmpfs-backed PostgreSQL container. All 69 table counts matched production, including Auth. The container was removed and no decrypted dump was written to disk. The first GitHub age artifact still awaits credentials. GitHub Actions failure-only email notifications were verified.
+- Singapore production is **Hello Division G** and the paused fallback is **Hello Division G (Seoul, retired)**. The restore guide is in START_HERE.md.

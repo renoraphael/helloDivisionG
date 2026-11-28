@@ -21,6 +21,7 @@ create table public.hdg_leader_records (
  year_start int not null references public.hdg_program_years,
  division_code text not null references public.hdg_divisions(code),
  area_code text,
+ area_codes text[] not null default '{}',
  club_number text references public.hdg_clubs,
  title text not null check (length(btrim(title)) between 1 and 200),
  occurred_on date not null,
@@ -30,9 +31,24 @@ create table public.hdg_leader_records (
  unique(id,kind),
  foreign key (year_start,area_code) references public.hdg_areas(year_start,code),
  check (area_code is null or left(area_code,1)=division_code),
+ check (cardinality(area_codes)=0 or
+   (cardinality(area_codes)>1 and area_code is null and club_number is null and kind in ('tli_session','contest'))),
  check (kind not in ('club_performance','area_visit') or (area_code is not null and club_number is not null))
 );
 create index hdg_leader_records_scope on public.hdg_leader_records(division_code,year_start,area_code,kind);
+
+create function hdg_sync_private.validate_leader_areas() returns trigger
+language plpgsql set search_path to '' as $$
+begin
+ if cardinality(new.area_codes) <> (select count(*) from public.hdg_areas
+   where year_start=new.year_start and division_code=new.division_code and code=any(new.area_codes)) then
+  raise exception 'Event coverage must contain only distinct areas in its division and program year' using errcode='22023';
+ end if;
+ return new;
+end $$;
+revoke all on function hdg_sync_private.validate_leader_areas() from public,anon,authenticated;
+create trigger validate_leader_areas before insert or update of area_codes,year_start,division_code
+ on public.hdg_leader_records for each row execute function hdg_sync_private.validate_leader_areas();
 
 create table public.hdg_tli_attendance (
  id uuid primary key default gen_random_uuid(),
@@ -45,6 +61,15 @@ create table public.hdg_tli_attendance (
  foreign key(session_id,session_kind) references public.hdg_leader_records(id,kind) on delete cascade
 );
 create index hdg_tli_attendance_membership on public.hdg_tli_attendance(membership_id);
+
+-- An officer's round flag does not establish attendance at a particular session.
+create table public.hdg_tli_round_attendance (
+ membership_id uuid not null references public.hdg_memberships on delete cascade,
+ year_start int not null references public.hdg_program_years,
+ round_no smallint not null check (round_no in (1,2)),
+ present boolean not null,
+ primary key(membership_id,year_start,round_no)
+);
 
 -- Personal tasks retain scope for filtering but only the owner can read or modify them.
 create table public.hdg_personal_tasks (
@@ -64,9 +89,13 @@ create table public.hdg_personal_tasks (
 create index hdg_personal_tasks_owner on public.hdg_personal_tasks(owner_id);
 alter table public.hdg_leader_records enable row level security;
 alter table public.hdg_tli_attendance enable row level security;
+alter table public.hdg_tli_round_attendance enable row level security;
 alter table public.hdg_personal_tasks enable row level security;
 create policy hdg_leader_records_read on public.hdg_leader_records for select to authenticated
- using (hdg_sync_private.leader_scope(division_code,area_code,false));
+ using (case when cardinality(area_codes)=0 then
+   hdg_sync_private.leader_scope(division_code,area_code,false)
+   else exists(select 1 from unnest(area_codes) a(code)
+     where hdg_sync_private.leader_scope(division_code,a.code,false)) end);
 create function hdg_sync_private.can_read_tli_attendance(p_session uuid,p_membership uuid)
 returns boolean language sql stable security definer set search_path to ''
 as $$
@@ -75,10 +104,23 @@ as $$
   cross join lateral (select hdg_sync_private.club_area(m.club_number,s.year_start) as area) scope
   where s.id=p_session and s.kind='tli_session' and left(scope.area,1)=s.division_code
    and (s.area_code is null or s.area_code=scope.area)
+   and (cardinality(s.area_codes)=0 or scope.area=any(s.area_codes))
    and hdg_sync_private.leader_scope(s.division_code,scope.area,false))
 $$;
 create policy hdg_tli_attendance_read on public.hdg_tli_attendance for select to authenticated
  using (hdg_sync_private.can_read_tli_attendance(session_id,membership_id));
+
+create function hdg_sync_private.can_read_tli_round(p_membership uuid,p_year int)
+returns boolean language sql stable security definer set search_path to '' as $$
+ select exists(select 1 from public.hdg_memberships m
+  cross join lateral (select hdg_sync_private.club_area(m.club_number,p_year) as area) scope
+  where m.id=p_membership and scope.area is not null
+    and hdg_sync_private.leader_scope(left(scope.area,1),scope.area,false))
+$$;
+revoke all on function hdg_sync_private.can_read_tli_round(uuid,int) from public,anon;
+grant execute on function hdg_sync_private.can_read_tli_round(uuid,int) to authenticated;
+create policy hdg_tli_round_attendance_read on public.hdg_tli_round_attendance for select to authenticated
+ using (hdg_sync_private.can_read_tli_round(membership_id,year_start));
 create policy hdg_personal_tasks_owner on public.hdg_personal_tasks for select to authenticated using (owner_id=(select auth.uid()));
 
 create function public.hdg_save_leader_record(p_kind text,p_id uuid,p_year int,p_division text,p_area text,p_club text,
@@ -123,6 +165,7 @@ begin
  select hdg_sync_private.club_area(club_number,s.year_start) into member_area from public.hdg_memberships where id=p_membership;
  if s.id is null or member_area is null or left(member_area,1)<>s.division_code
     or (s.area_code is not null and member_area<>s.area_code)
+    or (cardinality(s.area_codes)>0 and not member_area=any(s.area_codes))
     or not hdg_sync_private.leader_scope(s.division_code,member_area,true) then
   raise exception 'Outside your attendance edit scope' using errcode='42501';
  end if;
@@ -174,6 +217,8 @@ as $$
   'personalTasks', coalesce((select jsonb_agg(to_jsonb(t)-'owner_id') from public.hdg_personal_tasks t
     where t.owner_id=auth.uid()),'[]'),
   'tliAttendance', coalesce((select jsonb_agg(to_jsonb(a)-'session_kind') from public.hdg_tli_attendance a
+    join public.hdg_memberships m on m.id=a.membership_id where m.person_id in (select hdg_sync_private.my_people())), '[]'),
+  'tliRoundAttendance', coalesce((select jsonb_agg(to_jsonb(a)) from public.hdg_tli_round_attendance a
     join public.hdg_memberships m on m.id=a.membership_id where m.person_id in (select hdg_sync_private.my_people())), '[]'))
 $$;
 revoke execute on function public.hdg_export_my_data(),public.hdg_delete_personal_task(uuid,timestamptz) from public,anon;
@@ -191,8 +236,8 @@ as $$
   and hdg_sync_private.leader_scope(p_division,a.area_code,false)
 $$;
 
-revoke all on public.hdg_leader_records,public.hdg_tli_attendance,public.hdg_personal_tasks from public,anon,authenticated;
-grant select on public.hdg_leader_records,public.hdg_tli_attendance,public.hdg_personal_tasks to authenticated;
+revoke all on public.hdg_leader_records,public.hdg_tli_attendance,public.hdg_tli_round_attendance,public.hdg_personal_tasks from public,anon,authenticated;
+grant select on public.hdg_leader_records,public.hdg_tli_attendance,public.hdg_tli_round_attendance,public.hdg_personal_tasks to authenticated;
 revoke execute on function hdg_sync_private.leader_scope(text,text,boolean), hdg_sync_private.can_read_tli_attendance(uuid,uuid) from public,anon;
 grant execute on function hdg_sync_private.leader_scope(text,text,boolean), hdg_sync_private.can_read_tli_attendance(uuid,uuid) to authenticated;
 revoke execute on function public.hdg_save_leader_record(text,uuid,int,text,text,text,text,date,jsonb,timestamptz),

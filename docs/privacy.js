@@ -87,6 +87,40 @@ window.HDGPrivacy = (() => {
 
   const formatDate = value => new Intl.DateTimeFormat(undefined, {dateStyle: 'medium', timeStyle: 'short'}).format(new Date(value));
 
+  const rosterFields = {
+    name: 'Name', member_id: 'Member ID', club: 'Club membership', email: 'Email', city: 'City'
+  };
+
+  function correctionForm(rpc) {
+    const form = element('details');
+    const field = element('select');
+    for (const [value, label] of Object.entries(rosterFields)) {
+      const option = element('option', label);
+      option.value = value;
+      field.append(option);
+    }
+    const fieldLabel = element('label', 'Roster field ');
+    fieldLabel.append(field);
+    const note = element('textarea');
+    note.maxLength = 500;
+    note.rows = 3;
+    const noteLabel = element('label', 'What should be corrected? ');
+    noteLabel.append(note);
+    const result = status();
+    form.append(element('summary', 'Request a roster correction'), fieldLabel, noteLabel, result,
+      button('Send correction request', async () => {
+        if (!note.value.trim()) {
+          result.textContent = 'Enter what should be corrected.';
+          note.focus();
+          return;
+        }
+        await rpc('hdg_request_privacy_correction', {p_field: field.value, p_details: note.value});
+        note.value = '';
+        result.textContent = 'Correction request sent.';
+      }, result));
+    return form;
+  }
+
   async function showSettings(rpc, signOut) {
     await review(rpc, signOut);
     const [info, notice] = await Promise.all([rpc('hdg_my_privacy'), rpc('hdg_privacy_notice')]);
@@ -114,7 +148,7 @@ window.HDGPrivacy = (() => {
         if (!window.confirm('Remove your nickname, other names, pronunciation, and profile photo?')) return;
         await rpc('hdg_remove_my_details');
         result.textContent = 'Your profile details were removed.';
-      }, result));
+      }, result), correctionForm(rpc));
     }
     box.append(deletion);
     if (info.pending) {
@@ -171,6 +205,32 @@ window.HDGPrivacy = (() => {
     anchor.before(panel);
   }
 
+  function mountCorrections(rpc, anchor) {
+    if (!anchor || document.getElementById('hdg-privacy-corrections')) return;
+    const panel = element('section', '', 'card');
+    panel.id = 'hdg-privacy-corrections';
+    const result = status();
+    const rows = element('ul');
+    async function load() {
+      const queue = await rpc('hdg_privacy_correction_queue');
+      rows.replaceChildren();
+      result.textContent = queue.length ? '' : 'No pending correction requests.';
+      for (const item of queue) {
+        const row = element('li');
+        row.append(element('strong', (rosterFields[item.field] || item.field) + ' · ' + (item.email || 'Account')),
+          element('p', formatDate(item.requestedAt)), element('p', item.details),
+          button('Mark reviewed', async () => {
+            await rpc('hdg_resolve_privacy_correction', {p_request: item.id});
+            await load();
+          }, result));
+        rows.append(row);
+      }
+    }
+    panel.append(element('h3', 'Roster correction requests'),
+      button('Load correction requests', load, result), result, rows);
+    anchor.before(panel);
+  }
+
   async function mount(rpc, signOut) {
     if (document.getElementById('hdg-privacy-settings')) return;
     const panel = element('section', '', 'card');
@@ -181,7 +241,10 @@ window.HDGPrivacy = (() => {
     if (!settings) panel.style.cssText = 'position:fixed;inset:auto 1rem 1rem auto;z-index:1000';
     (settings || document.body).append(panel);
     const reports = document.getElementById('reportTable');
-    if (reports && (await rpc('hdg_my_privacy')).maintainer) mountQueue(rpc, reports);
+    if (reports && (await rpc('hdg_my_privacy')).maintainer) {
+      mountQueue(rpc, reports);
+      mountCorrections(rpc, reports);
+    }
   }
 
   return {review, mount};
