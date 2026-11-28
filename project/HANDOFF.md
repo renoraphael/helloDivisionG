@@ -14,6 +14,15 @@ Let Claude, Grok, Antigravity, Codex, and other assistants work on the same Hell
 - An existing draft PR on setup/central-database-plan holds backend/iPhone setup and earlier integration notes. Check actual status before reusing it.
 - The generated private-app/v632.html is ignored by Git.
 
+## Division G leader data shadow copy (28 November 2026)
+
+- The owner approved mappings 1–9. Applied 021 and 022 to Singapore production on 28 November 2026 after the rolled-back permission rehearsal and 441/441 synthetic access checks against the released privacy baseline. The post-commit permissions matched the rehearsal. There were 19 new entries, zero existing changes or removals, and no new `anon` or PUBLIC access.
+- Shadow revision 28 matched all 177 mapped rows, with zero missing, extra or changed rows. Counts were 5 TLI sessions, 3 contests, 11 visits, 16 club performance snapshots and 142 membership round flags. Six events are multi-area. Four clubs had different legacy and official DCP totals from differently dated snapshots. Two task dismissals and 11 raw visit emails remain in legacy pending review.
+- Production still reads and saves the shared record. Its revision, 10 historical revisions, and release pointers were fingerprinted before and after. Request separate approval for the dashboard switch, with a proposed five-minute save pause, a final parity refresh, and a tested one-step fallback that preserves acknowledged edits.
+- Event scope follows the approved program-year alignment. Combined TLI and contest events are one row with exact area coverage. Round flags link to verified club memberships and are never guessed from training session dates. Leave unreviewed names and free text, original visit emails, and task dismissals in the shared record.
+- Division K imports stay closed pending publication of the notice and the owner's decision to open them. The bulk role tool provides a maintainer preview and applies only an approved batch in an open division.
+- The desktop v667 preview adds a read-only official figures panel in the existing District 87 sync section. It has been tested with synthetic browser logic. The 6 PM WITA ChatGPT collection still needs a validated machine-readable handoff for scheduled ingestion into Supabase.
+
 ## Verified Supabase environments
 
 - **Singapore production** `ovmdhkrkogivlvjnbqpj` (`ap-southeast-1`) serves v666 and is named **Hello Division G**. The owner approved the display name change on 28 November 2026.
